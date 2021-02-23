@@ -1,0 +1,103 @@
+---
+
+- hosts: all
+  tasks:
+  - name: Install common packages
+    ansible.builtin.package:
+      name: 
+        - curl
+        - joe
+        - nano
+        - vim-tiny
+      state: present
+
+- hosts: potbuilder
+  tasks:
+  - name: Install packages
+    ansible.builtin.package:
+      name: 
+        - pot
+      state: present
+
+  - name: Create pot.conf
+    copy:
+      dest: /usr/local/etc/pot/pot.conf
+      content: |
+        POT_NETWORK=10.192.0.0/10
+        POT_NETMASK=255.192.0.0
+        POT_GATEWAY=10.192.0.1
+        POT_EXTIF=vtnet0
+
+  - name: Set flavours directory permissions
+    ansible.builtin.file:
+      path: /usr/local/etc/pot/flavours
+      state: directory
+      mode: '0775'
+
+  - name: Run pot init
+    ansible.builtin.command:
+      argv:
+        - /usr/local/bin/pot
+        - init
+      creates: /var/log/pot
+
+- hosts: minipot
+  tasks:
+  - name: Install packages
+    ansible.builtin.package:
+      name: 
+        - minipot
+        - vault
+      state: present
+
+  - name: Download minipot-traefik.toml
+    get_url:
+      url: "https://raw.githubusercontent.com/pizzamig/minipot/\
+        5ea810557ac20df14daf2072579455b4a4774471/etc/\
+        minipot-traefik.toml.sample"
+      dest: /usr/local/etc/minipot-traefik.toml
+      checksum: "sha256:\
+        acdc098a5abd20a0b85b7c1df6a74c9e3f7b529d62dad517cff40e153ae24f29"
+      mode: '0644'
+
+  - name: Create pot.conf
+    copy:
+      dest: /usr/local/etc/pot/pot.conf
+      content: |
+        POT_NETWORK=10.192.0.0/10
+        POT_NETMASK=255.192.0.0
+        POT_GATEWAY=10.192.0.1
+        POT_EXTIF=vtnet0
+
+  - name: Run pot init
+    ansible.builtin.command:
+      argv:
+        - /usr/local/bin/pot
+        - init
+      creates: /var/log/pot
+
+  - name: Run minipot-init
+    ansible.builtin.command:
+      argv:
+        - /usr/local/bin/minipot-init
+      creates: /var/log/nomad/nomad.log
+    notify:
+      - Restart nomad
+      - Restart consul
+      - Restart traefik
+
+  handlers:
+  - name: Restart nomad
+    ansible.builtin.service:
+      name: nomad
+      state: restarted
+
+  - name: Restart consul
+    ansible.builtin.service:
+      name: consul
+      state: restarted
+
+  - name: Restart traefik
+    ansible.builtin.service:
+      name: traefik
+      state: restarted
