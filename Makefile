@@ -14,8 +14,8 @@ all:
 	# up/provision VMs
 	vagrant up
 	
-	# build pot image
-	env VERBOSE=1 ./potbuild.sh
+	# build example pot image
+	./potbuild.sh -v example
 
 	# shutdown vms
 	vagrant halt
