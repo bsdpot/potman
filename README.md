@@ -1,6 +1,10 @@
 # potman
 
-Build pots easily.
+Build [pots](https://github.com/pizzamig/pot) easily.
+
+Uses [Potluck](https://potluck.honeyguide.net) templates, see also
+the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
+[FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
 ## Quickstart
 
@@ -26,5 +30,3 @@ is:
     pkg install bash git packer py37-ansible vagrant virtualbox-ose
     service vboxnet enable
     service vboxnet start
-
-  

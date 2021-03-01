@@ -6,13 +6,64 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 
 POTBUILDER=potbuilder
+FLAVOURS_DIR=flavours
 SSHCONF=${SSHCONF:-_build/.ssh_conf}
 LOGFILE=_build/potbuild.log
-FLAVOUR="myflavour"
 FBSD=12.2
 FBSD_TAG=12_2
 DATE=$(date "+%Y-%m-%d")
 STEPCOUNT=0
+
+usage()
+{
+  echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+}
+
+OPTIND=1
+while getopts "hvd:" _o ; do
+  case "$_o" in
+  d)
+    FLAVOURS_DIR=$2
+    ;;
+  h)
+    usage
+    exit 0
+    ;;
+  v)
+    VERBOSE="YES"
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+shift "$((OPTIND-1))"
+
+FLAVOUR=$1
+
+if [[ -z "$FLAVOUR" ]]; then
+  usage
+  exit 1
+fi
+
+if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
+  >&2 echo "Invalid flavour"
+  exit 1
+fi
+
+FLAVOUR_FILES="\
+  $FLAVOUR $FLAVOUR+4 $FLAVOUR.sh \
+  $FLAVOUR.d/CHANGELOG.md $FLAVOUR.d/myfile.tar
+"
+
+for file in $FLAVOUR_FILES; do
+  if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
+    >&2 echo "$FLAVOURS_DIR/$FLAVOUR/$file missing"
+    exit 1
+  fi
+done
 
 set -eE
 trap 'echo error: $STEP failed' ERR 
@@ -56,25 +107,22 @@ mkdir -p _build
 step "Initialize"
 vagrant ssh-config > $SSHCONF
 
-VERSION=$(head -n 1 "$FLAVOUR"/"$FLAVOUR".d/CHANGELOG.md)
+VERSION=$(head -n 1 "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/CHANGELOG.md)
 VERSION_SUFFIX="_$VERSION"
 
 step "Test SSH connection"
 run_ssh true
 
 step "Remove existing remote $FLAVOUR.d"
-run_ssh rm -rf /usr/local/etc/pot/flavours/"$FLAVOUR".d
+run_ssh rm -rf /usr/local/etc/pot/flavours/$FLAVOUR.d
 
 step "Copy flavour files"
-tar -cf - "$FLAVOUR"/"$FLAVOUR" "$FLAVOUR"/"$FLAVOUR"+4 \
-  "$FLAVOUR"/"$FLAVOUR".sh "$FLAVOUR"/"$FLAVOUR".d/CHANGELOG.md \
-  "$FLAVOUR"/"$FLAVOUR".d/myfile.tar \
-  | run_ssh tar -C /usr/local/etc/pot/flavours \
-    --strip-components 1 -xof -
+tar -C "$FLAVOURS_DIR"/$FLAVOUR -cf - $FLAVOUR_FILES \
+  | run_ssh tar -C /usr/local/etc/pot/flavours -xof -
 
 step "Set remote flavour permissions"
-run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/"$FLAVOUR".sh
-run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/"$FLAVOUR".d
+run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.sh
+run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.d
 
 step "Destroy old pot images"
 run_ssh "sudo pot destroy -F -p \"$FLAVOUR\"_\"$FBSD_TAG\" || true"
