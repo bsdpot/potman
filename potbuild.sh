@@ -102,7 +102,7 @@ function step {
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
 
-mkdir -p _build
+mkdir -p _build/tmp _build/artifacts
 
 step "Initialize"
 vagrant ssh-config > $SSHCONF
@@ -138,23 +138,23 @@ step "Export pot"
 run_ssh sudo pot export -l 0 -p "$FLAVOUR"_"$FBSD_TAG" \
   -t "$VERSION" -D /tmp
 
-step "Make local output directory"
-mkdir -p "_build/$DATE"/"$FLAVOUR"
-
 step "Copy pot image to local directory"
 scp -qF "$SSHCONF" \
   "$POTBUILDER":/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  "_build/$DATE"/"$FLAVOUR"/.
-
-step "Copy pot image skein to local directory"
-scp -qF "$SSHCONF" \
   "$POTBUILDER":/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
-  "_build/$DATE"/"$FLAVOUR"/.
+  _build/tmp/.
 
 step "Clean up build vm"
 run_ssh sudo pot destroy -F -p "$FLAVOUR"_"$FBSD_TAG"
-run_ssh sudo rm -f /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  rm -f /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+run_ssh sudo rm -f \
+  /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+
+step "Move image into place"
+mv \
+  _build/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  _build/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
+  _build/artifacts/.
 
 # if DEBUG is enabled, dump the variables
 if [ $DEBUG -eq 1 ]; then

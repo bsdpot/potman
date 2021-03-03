@@ -26,10 +26,19 @@ Vagrant.configure("2") do |config|
         "VBoxInternal/Devices/ahci/0/LUN#[0]/Config/IgnoreFlush", "0"]
       vb.default_nic_type = 'virtio'
     end
+    #node.vm.network :private_network, ip: "10.100.1.3"
+    node.vm.network :forwarded_port, guest: 4646, host_ip: "10.100.1.1",
+      host: 4646, id: "nomad"
+    node.vm.network :forwarded_port, guest: 8500, host_ip: "10.100.1.1",
+      host: 8500, id: "consul"
+    node.vm.network :forwarded_port, guest: 8080, host_ip: "10.100.1.1",
+      host: 8080, id: "www"
+    node.vm.network :forwarded_port, guest: 9002, host_ip: "10.100.1.1",
+      host: 9002, id: "traefik"
   end
 
   config.vm.define "pottery", primary: false do |node|
-    node.vm.hostname = 'minipot'
+    node.vm.hostname = 'pottery'
     node.vm.box = "FreeBSD-12.2-RELEASE-amd64"
     node.vm.provider "virtualbox" do |vb|
       vb.memory = "1024"
@@ -41,8 +50,7 @@ Vagrant.configure("2") do |config|
     end
 
     node.vm.network :private_network, ip: "10.100.1.2"
-    #node.vm.network :private_network, ip: "192.168.56.101"
-    #node.vm.network :forwarded_port, guest: 22, host: 10122, id: "ssh"
+    node.vm.network :forwarded_port, guest: 80, host_ip: "10.100.1.1", host: 10180, id: "www"
     #node.vm.provision :hosts, :sync_hosts => true
 
     node.vm.provision 'ansible' do |ansible|

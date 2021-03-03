@@ -1,0 +1,52 @@
+job "example" {
+  datacenters = ["minipot"]
+  type        = "service"
+
+  group "group1" {
+    count = 1 
+
+    task "www1" {
+      driver = "pot"
+
+      service {
+        tags = ["nginx", "www"]
+        name = "example"
+        port = "http"
+
+         check {
+            type     = "tcp"
+            name     = "tcp"
+            interval = "60s"
+            timeout  = "30s"
+          }
+          check_restart {
+            limit = 5
+            grace = "120s"
+            ignore_warnings = false
+          }
+      }
+
+      config {
+        image = "http://10.100.1.2"
+        pot = "example_12_2"
+        tag = "0.1"
+        command = "/usr/local/bin/cook"
+        args = ["-h","Param 1","-n","Param 2"]
+
+        port_map = {
+          http = "80"
+        }
+      }
+
+      resources {
+        cpu = 200
+        memory = 64
+
+        network {
+          mbits = 10
+          port "http" {}
+        }
+      }
+    }
+  }
+}

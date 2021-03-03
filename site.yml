@@ -41,6 +41,65 @@
         - init
       creates: /var/log/pot
 
+- hosts: pottery
+  tasks:
+  - name: Install packages
+    ansible.builtin.package:
+      name: 
+        - nginx
+      state: present
+
+  - name: Enable nginx on boot
+    ansible.builtin.service:
+      name: nginx
+      enabled: yes
+
+  - name: Create pottery directory
+    ansible.builtin.file:
+      path: /usr/local/www/pottery
+      state: directory
+      mode: '0775'
+
+  - name: Create pottery.tmp directory
+    ansible.builtin.file:
+      path: /usr/local/www/pottery.tmp
+      state: directory
+      mode: '0775'
+
+  - name: Create nginx.conf
+    copy:
+      dest: /usr/local/etc/nginx/nginx.conf
+      content: |
+        worker_processes  1;
+        events {
+          worker_connections  1024;
+        }
+        http {
+            server_tokens off;
+            include       mime.types;
+            charset       utf-8;
+            server {
+                server_name   localhost;
+                listen        80;
+                error_page    500 502 503 504  /50x.html;
+                location      / {
+                    root      /usr/local/www/pottery;
+                    autoindex on;
+                }
+                location = /50x.html {
+                  root        /usr/local/www/nginx-dist;
+                }
+            }
+        }
+    notify:
+      - Restart nginx
+
+  handlers:
+  - name: Restart nginx
+    ansible.builtin.service:
+      name: nginx
+      state: restarted
+
 - hosts: minipot
   tasks:
   - name: Install packages

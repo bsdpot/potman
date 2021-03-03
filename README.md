@@ -8,11 +8,21 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 
 ## Quickstart
 
-To start the build, simply type
+To build the example flavour, simply type
 
     make
 
-This might take a long time.
+This might take a while when run for the first time.
+
+## Building Your Own Flavour
+
+Create your own flavour like described in
+[this howto](https://potluck.honeyguide.net/howto/) and place it
+in the ./flavours directory of this repo.
+
+Then run:
+
+    make FLAVOUR=myflavour
 
 ## Dependencies
 
