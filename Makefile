@@ -1,6 +1,6 @@
 FLAVOUR?=	example
 
-all: check-commands buildbox startvms buildpot publishpot stopvms
+all: check-commands buildbox startvms buildpot publishpot testpot
 
 check-commands:
 	# check if required tools are available
@@ -18,6 +18,8 @@ buildbox:
 
 startvms:
 	# up/provision VMs
+	@(vagrant plugin list | grep "vagrant-disksize" >/dev/null)\
+	  || vagrant plugin install vagrant-disksize
 	vagrant up
 
 buildpot:
@@ -26,6 +28,9 @@ buildpot:
 
 publishpot:
 	./potpublish.sh -v ${FLAVOUR}
+
+testpot:
+	./pottest.sh -v ${FLAVOUR}
 
 stopvms:
 	# shutdown vms

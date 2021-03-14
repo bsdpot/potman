@@ -140,10 +140,22 @@
       argv:
         - /usr/local/bin/minipot-init
       creates: /var/log/nomad/nomad.log
+
     notify:
       - Restart nomad
       - Restart consul
       - Restart traefik
+
+  - name: Create extra consul config
+    copy:
+      dest: /usr/local/etc/consul.d/minipot-agent_extra.json
+      content: !unsafe |
+        {
+          "bind_addr": "{{ GetInterfaceIP \"vtnet1\" }}"
+        }
+
+    notify:
+      - Restart consul
 
   handlers:
   - name: Restart nomad

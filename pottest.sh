@@ -93,11 +93,18 @@ function step {
 step "Initialize"
 vagrant ssh-config > $SSHCONF
 
-VERSION=$(head -n 1 "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/CHANGELOG.md)
+VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
+
+if [ -e "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh ]; then
+  step "Load consul configuration"
+  env SSHCONF=$SSHCONF "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh
+fi
 
 step "Load job into minipot nomad"
 cat "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/minipot.job |\
+  sed "s/%%freebsd_tag%%/$FBSD_TAG/g" |\
+  sed "s/%%pot_version%%/$VERSION/g" |\
   run_ssh nomad run -
 
 # if DEBUG is enabled, dump the variables

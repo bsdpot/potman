@@ -51,6 +51,9 @@ git checkout 517f434bd960f97552a8fb6cd35f3cd2de09c492
 
 printf "\n# Enable resource limits\n" >>scripts/cleanup.sh
 printf "echo kern.racct.enable=1 >>/boot/loader.conf\n" >>scripts/cleanup.sh
+printf "\n# Growfs on first boot\n" >>scripts/cleanup.sh
+printf "service growfs enable\n" >>scripts/cleanup.sh
+printf "touch /firstboot\n" >>scripts/cleanup.sh
 cp variables.json.sample variables.json
 packer build -var-file=variables.json template.json
 vagrant box add builds/FreeBSD-12.2-RELEASE-amd64.box \

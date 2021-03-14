@@ -84,7 +84,7 @@ function step {
 step "Initialize"
 vagrant ssh-config > $SSHCONF
 
-VERSION=$(head -n 1 "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/CHANGELOG.md)
+VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
 
 step "Copy files to remote tmp"

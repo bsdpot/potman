@@ -107,7 +107,7 @@ mkdir -p _build/tmp _build/artifacts
 step "Initialize"
 vagrant ssh-config > $SSHCONF
 
-VERSION=$(head -n 1 "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/CHANGELOG.md)
+VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
 
 step "Test SSH connection"

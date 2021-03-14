@@ -1,199 +1,118 @@
 #!/bin/sh
 
-# POTLUCK TEMPLATE v2.0
+# Based on POTLUCK TEMPLATE v3.0
+# Altered by Michael Gmelin
+#
 # EDIT THE FOLLOWING FOR NEW FLAVOUR:
-# 1. RUNS_IN_NOMAD - yes or no
+# 1. RUNS_IN_NOMAD - true or false
 # 2. Create a matching <flavour> file with this <flavour>.sh file that
 #    contains the copy-in commands for the config files from <flavour>.d/
 #    Remember that the package directories don't exist yet, so likely copy to /root
 # 3. Adjust package installation between BEGIN & END PACKAGE SETUP
-# 4. Adjust jail configuration script generation between BEGIN & END COOK
+# 4. Check tarball extraction works for you between BEGIN & END EXTRACT TARBALL
+# 5. Adjust jail configuration script generation between BEGIN & END COOK
 #    Configure the config files that have been copied in where necessary
 
 # Set this to true if this jail flavour is to be created as a nomad (i.e. blocking) jail.
 # You can then query it in the cook script generation below and the script is installed
-# appropriately at the end of this script 
+# appropriately at the end of this script
 RUNS_IN_NOMAD=true
-
-# -------------- BEGIN PACKAGE SETUP -------------
-[ -w /etc/pkg/FreeBSD.conf ] && sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-ASSUME_ALWAYS_YES=yes pkg bootstrap
-
-# test exit code for error, exit with error code if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could bootstrap pkg"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# create the /ec/rc.conf file
-touch /etc/rc.conf
-
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not create /etc/rc.conf"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# disable sendmail
-sysrc sendmail_enable="NO"
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not disable sendmail"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# Install base packages: sudo
-pkg install -y sudo
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not install sudo"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# Install base packages: bash
-pkg install -y bash
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not install bash"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# Install nginx, this should also create /usr/local/etc/rc.d directory
-
-# setup /etc/rc.conf
-sysrc nginx_enable="YES"
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not enable nginx in sysrc."
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# install nginx
-pkg install -y nginx
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not install nginx."
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# Clean up pkg installs
-pkg clean -y
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not cleanup packages."
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# -------------- END PACKAGE SETUP -------------
-
-#
-# Create configurations
-#
 
 # set the cook log path/filename
 COOKLOG=/var/log/cook.log
 
-# check if cooklog exists, touch it if not
-if [ ! -e $COOKLOG ];
+# check if cooklog exists, create it if not
+if [ ! -e $COOKLOG ]
 then
-    echo "creating $COOKLOG"
-    touch $COOKLOG
+    echo "Creating $COOKLOG" | tee -a $COOKLOG
 else
-    echo "WARNING $COOKLOG already exists"  
+    echo "WARNING $COOKLOG already exists"  | tee -a $COOKLOG
 fi
+date >> $COOKLOG
 
-# >>>> TARBALL >>>>
-# check for myfile.tar, extract it if exists
-if [ -f /root/myfile.tar ];
+# -------------------- COMMON ---------------
+
+STEPCOUNT=0
+step() {
+  STEPCOUNT=$(expr "$STEPCOUNT" + 1)
+  STEP="$@"
+  echo "Step $STEPCOUNT: $STEP" | tee -a $COOKLOG
+}
+
+exit_ok() {
+  trap - EXIT
+  exit 0
+}
+
+FAILED=" failed"
+exit_error() {
+  STEP="$@"
+  FAILED=""
+  exit 1
+}
+
+set -e
+trap 'echo ERROR: $STEP$FAILED | (>&2 tee -a $COOKLOG)' EXIT
+
+# -------------- BEGIN PACKAGE SETUP -------------
+
+step "Bootstrap package repo"
+mkdir -p /usr/local/etc/pkg/repos
+echo 'FreeBSD: { url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest" }' \
+  >/usr/local/etc/pkg/repos/FreeBSD.conf
+ASSUME_ALWAYS_YES=yes pkg bootstrap
+
+step "Touch /etc/rc.conf"
+touch /etc/rc.conf
+
+# this is important, otherwise running /etc/rc from cook will
+# overwrite the IP address set in tinirc
+step "Remove ifconfig_epair0b from config"
+sysrc -cq ifconfig_epair0b && sysrc -x ifconfig_epair0b || true
+
+step "Disable sendmail"
+service sendmail disable
+
+step "Create /usr/local/etc/rc.d"
+mkdir -p /usr/local/etc/rc.d
+
+step "Install sudo"
+pkg install -y sudo
+
+step "Install bash"
+pkg install -y bash
+
+step "Install nginx"
+pkg install -y nginx
+
+step "Enable nginx"
+service nginx enable
+
+step "Clean package installation"
+pkg clean -y
+
+# -------------- END PACKAGE SETUP -------------
+
+# -------------- BEGIN EXTRACT TARBALL -------------
+
+step "Extract myfile.tar"
+if [ -f /root/myfile.tar ]
 then
-    echo "/root/myfile.tar exists, changing owner to root:wheel" >> $COOKLOG
-    echo "/root/myfile.tar exists, changing owner to root:wheel"
     chown root:wheel /root/myfile.tar
+    /usr/bin/tar -xof /root/myfile.tar -C /
 else
-    echo "ERROR /root/myfile.tar does not exist. Cannot change ownership" >> $COOKLOG
-    echo "ERROR /root/myfile.tar does not exist. Cannot change ownership"
-fi
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "error changing owner of myfile.tar."
-    exit "$flavour_error"
-else
-    continue
-fi
-
-if [ -r /root/myfile.tar ];
-then
-    echo "extracting tarball to /root." >> $COOKLOG
-    echo "extracting tarball to /root."
-    /usr/bin/tar -xf /root/myfile.tar -C /root/
-else
-    echo "ERROR /root/myfile.tar cannot be read" >> $COOKLOG
-    echo "ERROR /root/myfile.tar cannot be read"
-fi
-
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "myfile.tar cannot be read"
-    exit "$flavour_error"
-else
-    continue
+    exit_error "/root/myfile.tar does't exist"
 fi
 
 # change ownership of the extracted file. This is required, else failure.
 # and make it executable
+step "Setting owner and flags of /root/myfile.sh"
 if [ -e /root/myfile.sh ];
 then
-    echo "setting owner for myfile.sh." >> $COOKLOG
-    echo "setting owner for myfile.sh."
     chown root:wheel /root/myfile.sh
-    echo "making myfile.sh executable" >> $COOKLOG
-    echo "making myfile.sh executable"
     chmod +x /root/myfile.sh
 else
-    echo "ERROR There is a problem changing owner or setting executable bit on myfile.sh" >> $COOKLOG
-    echo "ERROR There is a problem changing owner or setting executable bit on myfile.sh" && exit 1
-fi
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "There is a problem changing owner or setting executable bit on myfile.sh."
-    exit "$flavour_error"
-else
-    continue
+    exit_error "/root/myfile.sh doesn't exist"
 fi
 
 # Arguments to pass to script (demo case)
@@ -203,47 +122,25 @@ ARG2=2000
 ARG3=3000
 
 # run script with args
-if [ -x /root/myfile.sh ];
-then
-    echo "Running file with arguments $ARG1 $ARG2 $ARG3." >> $COOKLOG
-    echo "Running file with arguments $ARG1 $ARG2 $ARG3."
-    /root/myfile.sh "$ARG1" "$ARG2" "$ARG3"
-else
-   echo "ERROR could not run myfile.sh with args $ARG1 $ARG2 $ARG3" >> $COOKLOG
-   echo "ERROR could not run myfile.sh with args $ARG1 $ARG2 $ARG3"
-fi
+step "Running /root/myfile.sh"
+/root/myfile.sh "$ARG1" "$ARG2" "$ARG3"
 
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not run myfile.sh with args"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-# <<<< TARBALL <<<<
+# -------------- END EXTRACT TARBALL -------------
 
 #
 # Now generate the run command script "cook"
-# It configures the system on the first run by creating the config file(s) 
-# On subsequent runs, it only starts sleeps (if nomad-jail) or simply exits 
+# It configures the system on the first run by creating the config file(s)
+# On subsequent runs, it only starts sleeps (if nomad-jail) or simply exits
 #
 
 # clear any old cook runtime file
-if [ -f /usr/local/bin/cook ];
-then
-    echo "an existing /usr/local/bin/cook exists. deleting" >> $COOKLOG
-    echo "an existing /usr/local/bin/cook exists. deleting"
-    rm /usr/local/bin/cook
-else
-    echo "WARNING no /usr/local/bin/cook file, creating." >> $COOKLOG
-    echo "WARNING no /usr/local/bin/cook file, creating."
-fi
+step "Remove pre-existing cook script (if any)"
+rm -f /usr/local/bin/cook
 
 # this runs when image boots
-# ----------------- BEGIN COOK ------------------ 
+# ----------------- BEGIN COOK ------------------
 
+step "Create cook script"
 echo "#!/bin/sh
 RUNS_IN_NOMAD=$RUNS_IN_NOMAD
 # declare this again for the pot image, might work carrying variable through like
@@ -252,12 +149,12 @@ COOKLOG=/var/log/cook.log
 # No need to change this, just ensures configuration is done only once
 if [ -e /usr/local/etc/pot-is-seasoned ]
 then
-    # If this pot flavour is blocking (i.e. it should not return), 
+    # If this pot flavour is blocking (i.e. it should not return),
     # we block indefinitely
-    if [ \$RUNS_IN_NOMAD ]
+    if [ \"\$RUNS_IN_NOMAD\" = \"true\" ]
     then
         /bin/sh /etc/rc
-        tail -f /dev/null 
+        tail -f /dev/null
     fi
     exit 0
 fi
@@ -287,17 +184,17 @@ do
 done
 
 # Check config variables are set
-if [ -z \${MYNETWORKS+x} ]; 
-then 
+if [ -z \${MYNETWORKS+x} ];
+then
     echo 'MYNETWORKS is unset - setting it to 192.168.0.0/16,10.0.0.0/8' >> /var/log/cook.log
     echo 'MYNETWORKS is unset - setting it to 192.168.0.0/16,10.0.0.0/8'
-    MYNETWORKS=\"192.168.0.0/16,10.0.0.0/8\" 
+    MYNETWORKS=\"192.168.0.0/16,10.0.0.0/8\"
 fi
 if [ -z \${HOSTNAME+x} ];
 then
     echo 'HOSTNAME is unset - setting it to \"demo\"' >> /var/log/cook.log
     echo 'HOSTNAME is unset - setting it to \"demo\"'
-    HOSTNAME=\"demo\" 
+    HOSTNAME=\"demo\"
 fi
 
 # ADJUST THIS BELOW: NOW ALL THE CONFIGURATION FILES NEED TO BE ADJUSTED & COPIED:
@@ -316,44 +213,25 @@ touch /usr/local/etc/pot-is-seasoned
 
 # If this pot flavour is blocking (i.e. it should not return), there is no /tmp/environment.sh
 # created by pot and we now after configuration block indefinitely
-if [ \$RUNS_IN_NOMAD ]
+if [ \"\$RUNS_IN_NOMAD\" = \"true\" ]
 then
     /bin/sh /etc/rc
     tail -f /dev/null
 fi
 " > /usr/local/bin/cook
 
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "could not create /usr/local/bin/cook"
-    exit "$flavour_error"
-else
-    continue
-fi
-
 # ----------------- END COOK ------------------
 
 
 # ---------- NO NEED TO EDIT BELOW ------------
 
-if [ -e /usr/local/bin/cook ];
+step "Make cook script executable"
+if [ -e /usr/local/bin/cook ]
 then
-    echo "setting executable bit on /usr/local/bin/cook" >> $COOKLOG
-    echo "setting executable bit on /usr/local/bin/cook"
+    echo "setting executable bit on /usr/local/bin/cook" | tee -a $COOKLOG
     chmod u+x /usr/local/bin/cook
 else
-    echo "ERROR there is no /usr/local/bin/cook to make executable" >> $COOKLOG
-    echo "ERROR there is no /usr/local/bin/cook to make executable" 
-fi
-
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "there is no /usr/local/bin/cook to make executable"
-    exit "$flavour_error"
-else
-    continue
+    exit_error "there is no /usr/local/bin/cook to make executable"
 fi
 
 #
@@ -364,15 +242,15 @@ fi
 # the "cook" script generated above each time, for the "Nomad" mode, the cook
 # script is started by pot (configuration through flavour file), therefore
 # we do not need to do anything here.
-# 
+#
 
 # Create rc.d script for "normal" mode:
-echo "creating rc.d script to start cook" >> $COOKLOG
-echo "creating rc.d script to start cook"
+step "Create rc.d script to start cook"
+echo "creating rc.d script to start cook" | tee -a $COOKLOG
 
 echo "#!/bin/sh
 #
-# PROVIDE: cook 
+# PROVIDE: cook
 # REQUIRE: LOGIN
 # KEYWORD: shutdown
 #
@@ -380,49 +258,31 @@ echo "#!/bin/sh
 name=\"cook\"
 rcvar=\"cook_enable\"
 load_rc_config \$name
-: ${cook_enable:=\"NO\"}
-: ${cook_env:=\"\"}
+: \${cook_enable:=\"NO\"}
+: \${cook_env:=\"\"}
 command=\"/usr/local/bin/cook\"
 command_args=\"\"
 run_rc_command \"\$1\"
 " > /usr/local/etc/rc.d/cook
 
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "there is a problem creating /usr/local/etc/rc.d/cook."
-    exit "$flavour_error"
-else
-    continue
-fi
-
-if [ -e /usr/local/etc/rc.d/cook ];
+step "Make rc.d script to start cook executable"
+if [ -e /usr/local/etc/rc.d/cook ]
 then
-    echo "Setting executable bit on cook rc file" >> $COOKLOG
-    echo "Setting executable bit on cook rc file"
-    chmod u+x /usr/local/etc/rc.d/cook && exit 0
+  echo "Setting executable bit on cook rc file" | tee -a $COOKLOG
+  chmod u+x /usr/local/etc/rc.d/cook
 else
-    echo "ERROR /usr/local/etc/rc.d/cook does not exist" >> $COOKLOG
-    echo "ERROR /usr/local/etc/rc.d/cook does not exist" && exit 1
+  exit_error "/usr/local/etc/rc.d/cook does not exist"
 fi
 
-# test the exit code for error, exit with error code 1 if so
-flavour_error=$?
-if [ "$flavour_error" -ne 0 ]; then
-    echo "/usr/local/etc/rc.d/cook does not exist"
-    exit "$flavour_error"
-else
-    continue
-fi
-
-if [ $RUNS_IN_NOMAD = false ];
+if [ "$RUNS_IN_NOMAD" != "true" ]
 then
-    # This is a non-nomad (non-blocking) jail, so we need to make sure the script
-    # gets started when the jail is started:
-    # Otherwise, /usr/local/bin/cook will be set as start script by the pot flavour
-    echo "enabling cook in /etc/rc.conf" >> $COOKLOG
-    echo "enabling cook in /etc/rc.conf"
-    echo "cook_enable=\"YES\"" >> /etc/rc.conf
+  step "Enable cook service"
+  # This is a non-nomad (non-blocking) jail, so we need to make sure the script
+  # gets started when the jail is started:
+  # Otherwise, /usr/local/bin/cook will be set as start script by the pot flavour
+  echo "enabling cook" | tee -a $COOKLOG
+  service cook enable
 fi
 
-exit 0
+# -------------------- DONE ---------------
+exit_ok
