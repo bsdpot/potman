@@ -54,7 +54,7 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
 fi
 
 set -eE
-trap 'echo error: $STEP failed' ERR 
+trap 'echo error: $STEP failed' ERR
 
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
@@ -86,6 +86,21 @@ vagrant ssh-config > $SSHCONF
 
 VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
+
+step "Check if remote tmp has enough disk space available"
+diskneed=$(stat -f "%z" _build/artifacts/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz)
+((diskneed *= 2))
+diskfree=$(echo "df /usr/local/www/pottery" \
+  | sftp -F $SSHCONF -q -b - "$POTTERY" \
+  | grep -v "Avail" \
+  | tail -n1 \
+  | awk '{ print $3 }')
+((diskfree *= 1024))
+
+if [[ "$diskneed" -gt "$diskfree" ]]; then
+  >&2 echo "Not enough diskspace available ($diskneed > $diskfree)"
+  false
+fi
 
 step "Copy files to remote tmp"
 sftp -F $SSHCONF -q -b - "$POTTERY" >/dev/null<<EOF

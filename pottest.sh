@@ -6,6 +6,7 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 
 MINIPOT=minipot
+DISK_MINFREE_MB=4096
 FLAVOURS_DIR=flavours
 SSHCONF=${SSHCONF:-_build/.ssh_conf}
 LOGFILE=_build/pottest.log
@@ -54,7 +55,7 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
 fi
 
 set -eE
-trap 'echo error: $STEP failed' ERR 
+trap 'echo error: $STEP failed' ERR
 
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
@@ -80,7 +81,7 @@ function run_ssh {
     return ${PIPESTATUS[0]}
   else
     ssh -F $SSHCONF "$MINIPOT" -- "$@" >> $LOGFILE
-  fi    
+  fi
 }
 
 function step {
@@ -95,6 +96,15 @@ vagrant ssh-config > $SSHCONF
 
 VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
+
+step "Check if minipot has approx. enough diskspace available"
+diskfree=$(ssh -F $SSHCONF "$MINIPOT" -- df -m / | \
+  tail -n1 | awk '{ print $4 }')
+
+if [[ "$DISK_MINFREE_MB" -gt "$diskfree" ]]; then
+  >&2 echo "Not enough diskspace available ($DISK_MINFREE_MB > $diskfree)"
+  false
+fi
 
 if [ -e "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh ]; then
   step "Load consul configuration"

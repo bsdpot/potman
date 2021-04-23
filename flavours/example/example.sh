@@ -101,7 +101,7 @@ then
     chown root:wheel /root/myfile.tar
     /usr/bin/tar -xof /root/myfile.tar -C /
 else
-    exit_error "/root/myfile.tar does't exist"
+    exit_error "/root/myfile.tar doesn't exist"
 fi
 
 # change ownership of the extracted file. This is required, else failure.

@@ -66,7 +66,7 @@ for file in $FLAVOUR_FILES; do
 done
 
 set -eE
-trap 'echo error: $STEP failed' ERR 
+trap 'echo error: $STEP failed' ERR
 
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
@@ -92,7 +92,7 @@ function run_ssh {
     return ${PIPESTATUS[0]}
   else
     ssh -F $SSHCONF "$POTBUILDER" -- "$@" >> $LOGFILE
-  fi    
+  fi
 }
 
 function step {

@@ -12,7 +12,7 @@ DATE=$(date "+%Y-%m-%d")
 STEPCOUNT=0
 
 set -eE
-trap 'echo error: $STEP failed' ERR 
+trap 'echo error: $STEP failed' ERR
 
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
