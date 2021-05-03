@@ -65,6 +65,14 @@ for file in $FLAVOUR_FILES; do
   fi
 done
 
+# searching for jail-based pot images
+NOMADCHECK=$(grep "^RUNS_IN_NOMAD=false" "$FLAVOURS_DIR"/"$FLAVOUR"/"$FLAVOUR".sh)
+if [ ! -z "$NOMADCHECK" ]; then
+    NOMADSTATUS=false
+else
+    NOMADSTATUS=true
+fi
+
 set -eE
 trap 'echo error: $STEP failed' ERR
 
@@ -128,8 +136,15 @@ step "Destroy old pot images"
 run_ssh "sudo pot destroy -F -p \"$FLAVOUR\"_\"$FBSD_TAG\" || true"
 
 step "Build pot image"
-run_ssh sudo pot create -b "$FBSD" -p "$FLAVOUR"_"$FBSD_TAG" \
-  -t single -N public-bridge -f fbsd-update -f "$FLAVOUR" -f "$FLAVOUR"+4 -v
+# if "RUNS_IN_NOMAD=false" is in grep search, aka variable is not
+# empty, then don't include the flavour+4 file in [pot create] cmd
+if [ "$NOMADSTATUS" == "false" ]; then
+    run_ssh sudo pot create -b "$FBSD" -p "$FLAVOUR"_"$FBSD_TAG" \
+      -t single -N public-bridge -f fbsd-update -f "$FLAVOUR" -v
+else
+    run_ssh sudo pot create -b "$FBSD" -p "$FLAVOUR"_"$FBSD_TAG" \
+      -t single -N public-bridge -f fbsd-update -f "$FLAVOUR" -f "$FLAVOUR"+4 -v
+fi
 
 step "Snapshot pot image"
 run_ssh sudo pot snapshot -p "$FLAVOUR"_"$FBSD_TAG"
@@ -157,7 +172,7 @@ mv \
   _build/artifacts/.
 
 # if DEBUG is enabled, dump the variables
-if [ $DEBUG -eq 1 ]; then
+if [ "$DEBUG" -eq 1 ]; then
     printf "\n\n"
     echo "Dump of variables"
     echo "================="
