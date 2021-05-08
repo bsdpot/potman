@@ -14,9 +14,42 @@ FBSD_TAG=12_2
 DATE=$(date "+%Y-%m-%d")
 STEPCOUNT=0
 
-usage()
+function usage()
 {
   echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+}
+
+# Hacky, needs to be replaced
+function read_flavour_config()
+{
+  OLD_IFS=$IFS
+  ini="$(<$1)"                # read the file
+  ini="${ini//[/\\[}"          # escape [
+  ini="${ini//]/\\]}"          # escape ]
+  IFS=$'\n' && ini=( ${ini} ) # convert to line-array
+  ini=( ${ini[*]//;*/} )      # remove comments with ;
+  ini=( ${ini[*]//#*/} )      # remove comments with #
+  ini=( ${ini[*]/\	=/=} )  # remove tabs before =
+  ini=( ${ini[*]/=\	/=} )   # remove tabs be =
+  ini=( ${ini[*]/\ =\ /=} )   # remove anything with a space around =
+  ini=( ${ini[*]/#\\[/\}$'\n'cfg_section_} ) # set section prefix
+  ini=( ${ini[*]/%\\]/ \(} )    # convert text2function (1)
+  ini=( ${ini[*]/=/=\( } )    # convert item to array
+  ini=( ${ini[*]/%/ \)} )     # close array parenthesis
+  ini=( ${ini[*]/%\\ \)/ \\} ) # the multiline trick
+  ini=( ${ini[*]/%\( \)/\(\) \{} ) # convert text2function (2)
+  ini=( ${ini[*]/%\} \)/\}} ) # remove extra parenthesis
+  ini[0]="" # remove first element
+  ini[${#ini[*]} + 1]='}'    # add the last brace
+
+  for i in ${!ini[*]}; do
+    if [[ ${ini[$i]} =~ ^([^=]+)=(.*$) ]]; then
+      ini[$i]="config_${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+    fi
+  done
+  #echo "$(echo "${ini[*]}")" # eval the result
+  eval "$(echo "${ini[*]}")" # eval the result
+  IFS=$OLD_IFS
 }
 
 OPTIND=1
@@ -53,21 +86,6 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   exit 1
 fi
 
-FLAVOUR_FILES="\
-  $FLAVOUR $FLAVOUR+4 $FLAVOUR.sh \
-  $FLAVOUR.d/CHANGELOG.md $FLAVOUR.d/myfile.tar
-"
-
-for file in $FLAVOUR_FILES; do
-  if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
-    >&2 echo "$FLAVOURS_DIR/$FLAVOUR/$file missing"
-    exit 1
-  fi
-done
-
-set -eE
-trap 'echo error: $STEP failed' ERR
-
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
     VERBOSE=1
@@ -102,10 +120,46 @@ function step {
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
 
+set -eE
+trap 'echo error: $STEP failed' ERR
+
+step "Read config"
+
+read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+cfg_section_manifest
+#echo ${config_runs_in_nomad}
+
+FLAVOUR_FILES="\
+  $FLAVOUR $FLAVOUR.sh \
+  $FLAVOUR.d/CHANGELOG.md $FLAVOUR.d/myfile.tar
+"
+POT_CREATE_FLAVOURS="-f fbsd-update -f $FLAVOUR"
+
+case "${config_runs_in_nomad}" in
+  "true")
+    FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR+4"
+    POT_CREATE_FLAVOURS="$POT_CREATE_FLAVOURS $FLAVOUR+4"
+    ;;
+  "false")
+    # do nothing
+    ;;
+  *)
+    >&2 echo "runs_in_nomad misconfigured"
+    exit 1
+esac
+
+for file in $FLAVOUR_FILES; do
+  if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
+    >&2 echo "$FLAVOURS_DIR/$FLAVOUR/$file missing"
+    exit 1
+  fi
+done
+
+
 mkdir -p _build/tmp _build/artifacts
 
 step "Initialize"
-vagrant ssh-config > $SSHCONF
+vagrant ssh-config $POTBUILDER > $SSHCONF
 
 VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
 VERSION_SUFFIX="_$VERSION"
@@ -125,39 +179,40 @@ run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.sh
 run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.d
 
 step "Destroy old pot images"
-run_ssh "sudo pot destroy -F -p \"$FLAVOUR\"_\"$FBSD_TAG\" || true"
+run_ssh "sudo pot destroy -F -p ${FLAVOUR}_\"$FBSD_TAG\" || true"
 
 step "Build pot image"
-run_ssh sudo pot create -b "$FBSD" -p "$FLAVOUR"_"$FBSD_TAG" \
-  -t single -N public-bridge -f fbsd-update -f "$FLAVOUR" -f "$FLAVOUR"+4 -v
+run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
+  pot create -b "$FBSD" -p ${FLAVOUR}_"$FBSD_TAG" \
+  -t single -N public-bridge $POT_CREATE_FLAVOURS -v
 
 step "Snapshot pot image"
-run_ssh sudo pot snapshot -p "$FLAVOUR"_"$FBSD_TAG"
+run_ssh sudo pot snapshot -p ${FLAVOUR}_"$FBSD_TAG"
 
 step "Export pot"
-run_ssh sudo pot export -l 0 -p "$FLAVOUR"_"$FBSD_TAG" \
+run_ssh sudo pot export -l 0 -p ${FLAVOUR}_"$FBSD_TAG" \
   -t "$VERSION" -D /tmp
 
 step "Copy pot image to local directory"
 scp -qF "$SSHCONF" \
-  "$POTBUILDER":/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  "$POTBUILDER":/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
+  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
   _build/tmp/.
 
 step "Clean up build vm"
-run_ssh sudo pot destroy -F -p "$FLAVOUR"_"$FBSD_TAG"
+run_ssh sudo pot destroy -F -p ${FLAVOUR}_"$FBSD_TAG"
 run_ssh sudo rm -f \
-  /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  /tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
 
 step "Move image into place"
 mv \
-  _build/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  _build/tmp/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
+  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
   _build/artifacts/.
 
 # if DEBUG is enabled, dump the variables
-if [ $DEBUG -eq 1 ]; then
+if [ "$DEBUG" -eq 1 ]; then
     printf "\n\n"
     echo "Dump of variables"
     echo "================="

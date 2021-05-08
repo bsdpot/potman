@@ -4,19 +4,17 @@
 # Altered by Michael Gmelin
 #
 # EDIT THE FOLLOWING FOR NEW FLAVOUR:
-# 1. RUNS_IN_NOMAD - true or false
-# 2. Create a matching <flavour> file with this <flavour>.sh file that
+# 1. Create a matching <flavour> file with this <flavour>.sh file that
 #    contains the copy-in commands for the config files from <flavour>.d/
 #    Remember that the package directories don't exist yet, so likely copy to /root
-# 3. Adjust package installation between BEGIN & END PACKAGE SETUP
-# 4. Check tarball extraction works for you between BEGIN & END EXTRACT TARBALL
-# 5. Adjust jail configuration script generation between BEGIN & END COOK
+# 2. Adjust package installation between BEGIN & END PACKAGE SETUP
+# 3. Check tarball extraction works for you between BEGIN & END EXTRACT TARBALL
+# 4. Adjust jail configuration script generation between BEGIN & END COOK
 #    Configure the config files that have been copied in where necessary
 
 # Set this to true if this jail flavour is to be created as a nomad (i.e. blocking) jail.
 # You can then query it in the cook script generation below and the script is installed
 # appropriately at the end of this script
-RUNS_IN_NOMAD=true
 
 # set the cook log path/filename
 COOKLOG=/var/log/cook.log
@@ -55,6 +53,11 @@ set -e
 trap 'echo ERROR: $STEP$FAILED | (>&2 tee -a $COOKLOG)' EXIT
 
 # -------------- BEGIN PACKAGE SETUP -------------
+
+step "Check parameters"
+if [ "$RUNS_IN_NOMAD" != "true" ] && [ "$RUNS_IN_NOMAD" != "false" ]; then
+    exit_error "Set RUNS_IN_NOMAD to 'true' or 'false'"
+fi
 
 step "Bootstrap package repo"
 mkdir -p /usr/local/etc/pkg/repos
