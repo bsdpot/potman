@@ -4,6 +4,7 @@ if [ -z "$BASH_VERSION" ]; then
   >&2 echo "This needs to run in bash"
   exit 1
 fi
+INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
 POTBUILDER=potbuilder
 FLAVOURS_DIR=flavours
@@ -17,39 +18,6 @@ STEPCOUNT=0
 function usage()
 {
   echo "Usage: $0 [-hv] [-d flavourdir] flavour"
-}
-
-# Hacky, needs to be replaced
-function read_flavour_config()
-{
-  OLD_IFS=$IFS
-  ini="$(<$1)"                # read the file
-  ini="${ini//[/\\[}"          # escape [
-  ini="${ini//]/\\]}"          # escape ]
-  IFS=$'\n' && ini=( ${ini} ) # convert to line-array
-  ini=( ${ini[*]//;*/} )      # remove comments with ;
-  ini=( ${ini[*]//#*/} )      # remove comments with #
-  ini=( ${ini[*]/\	=/=} )  # remove tabs before =
-  ini=( ${ini[*]/=\	/=} )   # remove tabs be =
-  ini=( ${ini[*]/\ =\ /=} )   # remove anything with a space around =
-  ini=( ${ini[*]/#\\[/\}$'\n'cfg_section_} ) # set section prefix
-  ini=( ${ini[*]/%\\]/ \(} )    # convert text2function (1)
-  ini=( ${ini[*]/=/=\( } )    # convert item to array
-  ini=( ${ini[*]/%/ \)} )     # close array parenthesis
-  ini=( ${ini[*]/%\\ \)/ \\} ) # the multiline trick
-  ini=( ${ini[*]/%\( \)/\(\) \{} ) # convert text2function (2)
-  ini=( ${ini[*]/%\} \)/\}} ) # remove extra parenthesis
-  ini[0]="" # remove first element
-  ini[${#ini[*]} + 1]='}'    # add the last brace
-
-  for i in ${!ini[*]}; do
-    if [[ ${ini[$i]} =~ ^([^=]+)=(.*$) ]]; then
-      ini[$i]="config_${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
-    fi
-  done
-  #echo "$(echo "${ini[*]}")" # eval the result
-  eval "$(echo "${ini[*]}")" # eval the result
-  IFS=$OLD_IFS
 }
 
 OPTIND=1
@@ -123,30 +91,24 @@ function step {
 set -eE
 trap 'echo error: $STEP failed' ERR
 
+step "Load common source"
+source "${INCLUDE_DIR}"/common.sh
+
 step "Read config"
-
 read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
-cfg_section_manifest
-#echo ${config_runs_in_nomad}
 
-FLAVOUR_FILES="\
-  $FLAVOUR $FLAVOUR.sh \
-  $FLAVOUR.d/CHANGELOG.md $FLAVOUR.d/myfile.tar
-"
+VERSION="${config_version}"
+VERSION_SUFFIX="_$VERSION"
+
+FLAVOUR_FILES="$FLAVOUR"
+
 POT_CREATE_FLAVOURS="-f fbsd-update -f $FLAVOUR"
-
-case "${config_runs_in_nomad}" in
-  "true")
+if [ "${config_runs_in_nomad}" == "true" ]; then
     FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR+4"
     POT_CREATE_FLAVOURS="$POT_CREATE_FLAVOURS $FLAVOUR+4"
-    ;;
-  "false")
-    # do nothing
-    ;;
-  *)
-    >&2 echo "runs_in_nomad misconfigured"
-    exit 1
-esac
+fi
+
+FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR.sh $FLAVOUR.d/distfile.tar"
 
 for file in $FLAVOUR_FILES; do
   if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
@@ -155,14 +117,11 @@ for file in $FLAVOUR_FILES; do
   fi
 done
 
-
 mkdir -p _build/tmp _build/artifacts
 
 step "Initialize"
 vagrant ssh-config $POTBUILDER > $SSHCONF
 
-VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
-VERSION_SUFFIX="_$VERSION"
 
 step "Test SSH connection"
 run_ssh true

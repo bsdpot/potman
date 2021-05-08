@@ -4,6 +4,7 @@ if [ -z "$BASH_VERSION" ]; then
   >&2 echo "This needs to run in bash"
   exit 1
 fi
+INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
 POTTERY=pottery
 FLAVOURS_DIR=flavours
@@ -53,9 +54,6 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   exit 1
 fi
 
-set -eE
-trap 'echo error: $STEP failed' ERR
-
 case "$VERBOSE" in
   [Yy][Ee][Ss]|1)
     VERBOSE=1
@@ -81,14 +79,23 @@ function step {
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
 
-step "Initialize"
-vagrant ssh-config > $SSHCONF
+set -eE
+trap 'echo error: $STEP failed' ERR
 
-VERSION=$("$FLAVOURS_DIR"/$FLAVOUR/version.sh)
+step "Load common source"
+source "${INCLUDE_DIR}"/common.sh
+
+step "Read config"
+read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+
+VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
+step "Initialize"
+vagrant ssh-config $POTTERY > $SSHCONF
+
 step "Check if remote tmp has enough disk space available"
-diskneed=$(stat -f "%z" _build/artifacts/"$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz)
+diskneed=$(stat -f "%z" _build/artifacts/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz)
 ((diskneed *= 2))
 diskfree=$(echo "df /usr/local/www/pottery" \
   | sftp -F $SSHCONF -q -b - "$POTTERY" \
@@ -106,8 +113,8 @@ step "Copy files to remote tmp"
 sftp -F $SSHCONF -q -b - "$POTTERY" >/dev/null<<EOF
 lcd _build/artifacts
 cd /usr/local/www/pottery
-mput "$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz
-mput "$FLAVOUR"_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz
+mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
 exit
 EOF
 

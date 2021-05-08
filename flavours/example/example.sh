@@ -98,13 +98,13 @@ pkg clean -y
 
 # -------------- BEGIN EXTRACT TARBALL -------------
 
-step "Extract myfile.tar"
-if [ -f /root/myfile.tar ]
+step "Extract distfile.tar"
+if [ -f /root/distfile.tar ]
 then
-    chown root:wheel /root/myfile.tar
-    /usr/bin/tar -xof /root/myfile.tar -C /
+    chown root:wheel /root/distfile.tar
+    /usr/bin/tar -xof /root/distfile.tar -C /
 else
-    exit_error "/root/myfile.tar doesn't exist"
+    exit_error "/root/distfile.tar doesn't exist"
 fi
 
 # change ownership of the extracted file. This is required, else failure.
