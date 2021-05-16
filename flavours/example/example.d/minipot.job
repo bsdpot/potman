@@ -31,7 +31,7 @@ job "example" {
         pot = "example_12_2"
         tag = "0.1"
         command = "/usr/local/bin/cook"
-        args = ["-h","Param 1","-n","Param 2"]
+        args = ["-h","'Param 1'","-n","'Param 2'"]
 
         port_map = {
           http = "80"

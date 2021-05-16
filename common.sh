@@ -3,6 +3,7 @@
 set -e
 
 VERSION_REGEX='^[0-9](.[0-9a-zA-Z]+)*$'
+ORIGIN_REGEX='^([a-zA-Z0-9_]*)$'
 
 # Hacky, needs to be replaced
 function read_ini_file()
@@ -49,5 +50,20 @@ function read_flavour_config {
   if [[ ! "${config_version}" =~ $VERSION_REGEX ]]; then
       >&2 echo "invalid version in manifest"
       exit 1
+  fi
+
+  if [[ ! "${config_origin}" =~ $ORIGIN_REGEX ]]; then
+      >&2 echo "invalid origin in manifest"
+      exit 1
+  fi
+
+  if [ -z "$config_keep" ]; then
+      config_keep=false
+  fi
+
+  if [ "$config_keep" != "true" ] &&
+      [ "$config_keep" != "false" ]; then
+    >&2 echo "invalid keep in manifest"
+    exit 1
   fi
 }

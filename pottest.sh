@@ -18,18 +18,21 @@ STEPCOUNT=0
 
 usage()
 {
-  echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+  echo "Usage: $0 [-hv] [-d flavourdir] [-s suffix] flavour"
 }
 
 OPTIND=1
-while getopts "hvd:" _o ; do
+while getopts "hvd:s:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=$2
+    FLAVOURS_DIR=${OPTARG}
     ;;
   h)
     usage
     exit 0
+    ;;
+  s)
+    SUFFIX=${OPTARG}
     ;;
   v)
     VERBOSE="YES"
@@ -53,6 +56,15 @@ fi
 if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   >&2 echo "Invalid flavour"
   exit 1
+fi
+
+PUBLIC_SUFFIX=""
+if [[ -n "$SUFFIX" ]]; then
+  if [[ ! "$SUFFIX" =~ ^[a-zA-Z][a-zA-Z0-9]{1,8}$ ]]; then
+    >&2 echo "Invalid suffix"
+    exit 1
+  fi
+  PUBLIC_SUFFIX="-${SUFFIX}"
 fi
 
 case "$VERBOSE" in
@@ -98,6 +110,11 @@ source "${INCLUDE_DIR}"/common.sh
 step "Read config"
 read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
 
+if [ "${config_runs_in_nomad}" != "true" ]; then
+  >&2 echo "Pot is not supposed to run in nomad"
+  false
+fi
+
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
@@ -115,13 +132,15 @@ fi
 
 if [ -e "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh ]; then
   step "Load consul configuration"
-  env SSHCONF=$SSHCONF "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh
+  env SSHCONF=$SSHCONF SUFFIX=$SUFFIX "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh
 fi
 
 step "Load job into minipot nomad"
 cat "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/minipot.job |\
   sed "s/%%freebsd_tag%%/$FBSD_TAG/g" |\
   sed "s/%%pot_version%%/$VERSION/g" |\
+  sed "s/%%suffix%%/$SUFFIX/g" |\
+  sed "s/%%public_suffix%%/$PUBLIC_SUFFIX/g" |\
   run_ssh nomad run -
 
 # if DEBUG is enabled, dump the variables

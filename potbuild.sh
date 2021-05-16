@@ -24,7 +24,7 @@ OPTIND=1
 while getopts "hvd:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=$2
+    FLAVOURS_DIR=${OPTARG}
     ;;
   h)
     usage
@@ -91,6 +91,8 @@ function step {
 set -eE
 trap 'echo error: $STEP failed' ERR
 
+mkdir -p _build/tmp _build/artifacts
+
 step "Load common source"
 source "${INCLUDE_DIR}"/common.sh
 
@@ -100,9 +102,11 @@ read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
+ORIGIN="${config_origin}"
+
 FLAVOUR_FILES="$FLAVOUR"
 
-POT_CREATE_FLAVOURS="-f fbsd-update -f $FLAVOUR"
+POT_CREATE_FLAVOURS="-f fbsd-update -f ${FLAVOUR}_version -f $FLAVOUR"
 if [ "${config_runs_in_nomad}" == "true" ]; then
     FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR+4"
     POT_CREATE_FLAVOURS="$POT_CREATE_FLAVOURS $FLAVOUR+4"
@@ -117,8 +121,6 @@ for file in $FLAVOUR_FILES; do
   fi
 done
 
-mkdir -p _build/tmp _build/artifacts
-
 step "Initialize"
 vagrant ssh-config $POTBUILDER > $SSHCONF
 
@@ -129,21 +131,88 @@ run_ssh true
 step "Remove existing remote $FLAVOUR.d"
 run_ssh rm -rf /usr/local/etc/pot/flavours/$FLAVOUR.d
 
+step "Remove existing remote $FLAVOUR files"
+run_ssh rm -f /usr/local/etc/pot/flavours/$FLAVOUR*
+
 step "Copy flavour files"
 tar -C "$FLAVOURS_DIR"/$FLAVOUR -cf - $FLAVOUR_FILES \
   | run_ssh tar -C /usr/local/etc/pot/flavours -xof -
 
+step "Create remote version flavour"
+run_ssh "echo '#!/bin/sh
+set -e
+mkdir -p /usr/local/etc
+echo \"${FBSD_TAG}${VERSION_SUFFIX}\" \
+>/usr/local/etc/${FLAVOUR}_version
+' | tee /usr/local/etc/pot/flavours/${FLAVOUR}_version.sh \
+>/dev/null
+"
+
 step "Set remote flavour permissions"
-run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.sh
-run_ssh sudo chmod 775 /usr/local/etc/pot/flavours/$FLAVOUR.d
+run_ssh sudo chmod 775 \
+  /usr/local/etc/pot/flavours/${FLAVOUR}_version.sh \
+  /usr/local/etc/pot/flavours/$FLAVOUR.sh \
+  /usr/local/etc/pot/flavours/$FLAVOUR.d
 
 step "Destroy old pot images"
 run_ssh "sudo pot destroy -F -p ${FLAVOUR}_\"$FBSD_TAG\" || true"
 
+step "Verify pot images are gone"
+run_ssh "! sudo pot info -p ${FLAVOUR}_\"$FBSD_TAG\" >/dev/null"
+
 step "Build pot image"
-run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
-  pot create -b "$FBSD" -p ${FLAVOUR}_"$FBSD_TAG" \
-  -t single -N public-bridge $POT_CREATE_FLAVOURS -v
+if [ -z "$ORIGIN" ]; then
+  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
+    pot create -b "$FBSD" -p ${FLAVOUR}_"$FBSD_TAG" \
+    -t single -N public-bridge ${POT_CREATE_FLAVOURS} -v
+else
+  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
+    pot clone -P "$ORIGIN" -p ${FLAVOUR}_"$FBSD_TAG" -F -v \
+    ${POT_CREATE_FLAVOURS}
+
+#  if false; then
+#  # XXX: THIS IS HORRIBLE AND SHOULD MOVE TO POT
+#  OLD_IFS=$IFS
+#  IFS=$'\n'
+#  for line in $(egrep -h "^(set-cmd -c|set-attribute -A|copy-in -s) " \
+#    "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR);
+#  do
+#      # XXX: set-cmd needs special quoting
+#      #echo run_ssh sudo pot $line -vp ${FLAVOUR}_"$FBSD_TAG"
+#      run_ssh sudo pot $line -p ${FLAVOUR}_"$FBSD_TAG"
+#  done
+#  IFS=$OLD_IFS
+#
+#  run_ssh sudo pot copy-in -p ${FLAVOUR}_"$FBSD_TAG" \
+#    -s /usr/local/etc/pot/flavours/${FLAVOUR}_version.sh \
+#    -d /root
+#
+#  run_ssh sudo pot copy-in -p ${FLAVOUR}_"$FBSD_TAG" \
+#    -s /usr/local/etc/pot/flavours/$FLAVOUR.sh \
+#    -d /root
+#
+#  run_ssh sudo pot start ${FLAVOUR}_"$FBSD_TAG"
+#
+#  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad}\
+#    jexec ${FLAVOUR}_"$FBSD_TAG" /root/${FLAVOUR}_version.sh ${FLAVOUR}_"$FBSD_TAG"
+#
+#  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad}\
+#    jexec ${FLAVOUR}_"$FBSD_TAG" /root/$FLAVOUR.sh ${FLAVOUR}_"$FBSD_TAG"
+#
+#  run_ssh sudo pot stop ${FLAVOUR}_"$FBSD_TAG"
+#
+#  OLD_IFS=$IFS
+#  IFS=$'\n'
+#  for line in $(egrep -h "^(set-cmd -c|set-attribute -A|copy-in -s) " \
+#    "$FLAVOURS_DIR"/$FLAVOUR/${FLAVOUR}+4);
+#  do
+#      # XXX: set-cmd needs special quoting
+#      #echo run_ssh sudo pot $line -vp ${FLAVOUR}_"$FBSD_TAG"
+#      run_ssh sudo pot $line -p ${FLAVOUR}_"$FBSD_TAG"
+#  done
+#  IFS=$OLD_IFS
+#  fi
+fi
 
 step "Snapshot pot image"
 run_ssh sudo pot snapshot -p ${FLAVOUR}_"$FBSD_TAG"
@@ -155,18 +224,25 @@ run_ssh sudo pot export -l 0 -p ${FLAVOUR}_"$FBSD_TAG" \
 step "Copy pot image to local directory"
 scp -qF "$SSHCONF" \
   "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
   "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
   _build/tmp/.
 
 step "Clean up build vm"
-run_ssh sudo pot destroy -F -p ${FLAVOUR}_"$FBSD_TAG"
+
+if [ "${config_keep}" != "true" ]; then
+  run_ssh sudo pot destroy -F -p ${FLAVOUR}_"$FBSD_TAG"
+fi
+
 run_ssh sudo rm -f \
   /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
   /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
 
 step "Move image into place"
 mv \
   _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
+  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
   _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
   _build/artifacts/.
 

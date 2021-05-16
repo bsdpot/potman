@@ -24,7 +24,7 @@ OPTIND=1
 while getopts "hvd:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=$2
+    FLAVOURS_DIR=${OPTARG}
     ;;
   h)
     usage
@@ -114,6 +114,7 @@ sftp -F $SSHCONF -q -b - "$POTTERY" >/dev/null<<EOF
 lcd _build/artifacts
 cd /usr/local/www/pottery
 mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz
+mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta
 mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
 exit
 EOF
