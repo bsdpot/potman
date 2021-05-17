@@ -128,34 +128,14 @@ run_ssh_minipot sudo find /var/cache/pot -name '${FLAVOUR}*.xz*' \
 
 step "Aggressively remove old pots"
 run_ssh_minipot "for potname in \
-  \$(pot list | grep \"pot name\" | grep ${FLAVOUR}_${FBSD_TAG} \
-    | awk '{ print \$4 }'); do
-    \$(zfs get -H origin | awk '{ print \$3 }' | grep -q \
-       \"/\$potname/\") || \
+  \$(pot list -q | grep ${FLAVOUR}_${FBSD_TAG}); do \
+      (zfs get -H origin | awk '{ print \$3 }' | grep -q \
+       -- \"/\$potname/\") || \
        find /opt/pot/jails/\$potname/conf -name fscomp.conf \
        -mtime $MINIPOT_PRUNE_POT_AGE \
        -exec sudo pot destroy -p \$potname \;
   done
 "
-
-#    find /opt/pot/jails/\$potname/conf -name fscomp.conf \
-#      -mtime $MINIPOT_PRUNE_POT_AGE \
-#      -exec sudo pot set-attr -p \$potname -A prunable -V YES \;
-#    find /opt/pot/jails/\$potname/conf -name fscomp.conf \
-#      -mtime $MINIPOT_PRUNE_POT_AGE \
-#      -exec sudo sed -i '' -e \"/^pot.attr.to-be-pruned=.*/d\" \
-#        /opt/pot/jails/\$potname/conf/pot.conf \;
-#    find /opt/pot/jails/\$potname/conf -name fscomp.conf \
-#      -mtime $MINIPOT_PRUNE_POT_AGE \
-#      -exec sudo sh -c \"echo 'pot.attr.to-be-pruned=YES' >> \
-#        /opt/pot/jails/\$potname/conf/pot.conf\" \;
-#  done
-#"
-
-
-#zfs get -H origin  | awk '{ print $3 }' | grep nu
-#zroot/pot/jails/nuke_12_2_1_11/m@1620587817
-#zroot/pot/jails/nuke_12_2_0_1076_19/m@1620734960
 
 step "Run pot prune on minipot"
 run_ssh_minipot sudo pot prune

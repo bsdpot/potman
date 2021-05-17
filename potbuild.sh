@@ -218,7 +218,7 @@ step "Snapshot pot image"
 run_ssh sudo pot snapshot -p ${FLAVOUR}_"$FBSD_TAG"
 
 step "Export pot"
-run_ssh sudo pot export -l 0 -p ${FLAVOUR}_"$FBSD_TAG" \
+run_ssh sudo pot export -c -l 0 -p ${FLAVOUR}_"$FBSD_TAG" \
   -t "$VERSION" -D /tmp
 
 step "Copy pot image to local directory"
