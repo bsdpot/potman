@@ -6,9 +6,9 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 
 LOGFILE=$(pwd)/_build/boxbuild.log
-FBSD=12.2
-FBSD_TAG=12_2
-DATE=$(date "+%Y-%m-%d")
+#FBSD=12.2
+#FBSD_TAG=12_2
+#DATE=$(date "+%Y-%m-%d")
 STEPCOUNT=0
 
 set -eE
@@ -34,8 +34,8 @@ esac
 
 function step {
   ((STEPCOUNT+=1))
-  STEP="$@"
-  echo "$STEP" >> $LOGFILE
+  STEP="$*"
+  echo "$STEP" >> "$LOGFILE"
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
 
@@ -49,11 +49,14 @@ git clone https://github.com/jlduran/packer-FreeBSD.git _build/packer
 cd _build/packer
 git checkout 517f434bd960f97552a8fb6cd35f3cd2de09c492
 
-printf "\n# Enable resource limits\n" >>scripts/cleanup.sh
-printf "echo kern.racct.enable=1 >>/boot/loader.conf\n" >>scripts/cleanup.sh
-printf "\n# Growfs on first boot\n" >>scripts/cleanup.sh
-printf "service growfs enable\n" >>scripts/cleanup.sh
-printf "touch /firstboot\n" >>scripts/cleanup.sh
+{
+  printf "\n# Enable resource limits\n"
+  printf "echo kern.racct.enable=1 >>/boot/loader.conf\n"
+  printf "\n# Growfs on first boot\n"
+  printf "service growfs enable\n"
+  printf "touch /firstboot\n"
+} >>scripts/cleanup.sh
+
 cp variables.json.sample variables.json
 packer build -var-file=variables.json template.json
 vagrant box add builds/FreeBSD-12.2-RELEASE-amd64.box \

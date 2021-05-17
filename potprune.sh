@@ -79,26 +79,26 @@ esac
 
 function run_ssh_minipot {
   if [ $DEBUG -eq 1 ]; then
-    ssh -F $SSHCONF "$MINIPOT" -- "$@" | tee -a $LOGFILE
-    return ${PIPESTATUS[0]}
+    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" | tee -a $LOGFILE
+    return "${PIPESTATUS[0]}"
   else
-    ssh -F $SSHCONF "$MINIPOT" -- "$@" >> $LOGFILE
+    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" >> $LOGFILE
   fi
 }
 
 function run_ssh_pottery {
   if [ $DEBUG -eq 1 ]; then
-    ssh -F $SSHCONF "$POTTERY" -- "$@" | tee -a $LOGFILE
-    return ${PIPESTATUS[0]}
+    ssh -F "$SSHCONF" "$POTTERY" -- "$@" | tee -a $LOGFILE
+    return "${PIPESTATUS[0]}"
   else
-    ssh -F $SSHCONF "$POTTERY" -- "$@" >> $LOGFILE
+    ssh -F "$SSHCONF" "$POTTERY" -- "$@" >> $LOGFILE
   fi
 }
 
 
 function step {
   ((STEPCOUNT+=1))
-  STEP="$@"
+  STEP="$*"
   echo "$STEP" >> $LOGFILE
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
@@ -107,24 +107,26 @@ set -eE
 trap 'echo error: $STEP failed' ERR
 
 step "Load common source"
-source "${INCLUDE_DIR}"/common.sh
+source "${INCLUDE_DIR}/common.sh"
 
 step "Read config"
-read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config $MINIPOT $POTTERY > $SSHCONF
+vagrant ssh-config "$MINIPOT" "$POTTERY" > "$SSHCONF"
 
 step "Remove old files from pottery"
-run_ssh_pottery sudo find /usr/local/www/pottery \
-  -name '${FLAVOUR}*.xz*' -mtime $POTTERY_PRUNE_AGE -delete
+# shellcheck disable=SC2016
+run_ssh_pottery "sudo find /usr/local/www/pottery \
+  -name '${FLAVOUR}*.xz*' -mtime $POTTERY_PRUNE_AGE -delete"
 
 step "Remove old files from pot cache"
-run_ssh_minipot sudo find /var/cache/pot -name '${FLAVOUR}*.xz*' \
-  -mtime $MINIPOT_PRUNE_CACHE_AGE -delete
+# shellcheck disable=SC2016
+run_ssh_minipot "sudo find /var/cache/pot -name '${FLAVOUR}*.xz*' \
+  -mtime $MINIPOT_PRUNE_CACHE_AGE -delete"
 
 step "Aggressively remove old pots"
 run_ssh_minipot "for potname in \

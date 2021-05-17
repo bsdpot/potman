@@ -74,17 +74,17 @@ esac
 
 function run_ssh {
   if [ $DEBUG -eq 1 ]; then
-    ssh -F $SSHCONF "$POTBUILDER" -- "$@" | tee -a $LOGFILE
-    return ${PIPESTATUS[0]}
+    ssh -F "$SSHCONF" "$POTBUILDER" -- "$@" | tee -a "$LOGFILE"
+    return "${PIPESTATUS[0]}"
   else
-    ssh -F $SSHCONF "$POTBUILDER" -- "$@" >> $LOGFILE
+    ssh -F "$SSHCONF" "$POTBUILDER" -- "$@" >> "$LOGFILE"
   fi
 }
 
 function step {
   ((STEPCOUNT+=1))
-  STEP="$@"
-  echo "$STEP" >> $LOGFILE
+  STEP="$*"
+  echo "$STEP" >> "$LOGFILE"
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
 
@@ -97,24 +97,26 @@ step "Load common source"
 source "${INCLUDE_DIR}"/common.sh
 
 step "Read config"
-read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 ORIGIN="${config_origin}"
 
-FLAVOUR_FILES="$FLAVOUR"
+FLAVOUR_FILES=( "$FLAVOUR" )
 
-POT_CREATE_FLAVOURS="-f fbsd-update -f ${FLAVOUR}_version -f $FLAVOUR"
+POT_CREATE_FLAVOURS=( "-f" "fbsd-update")
+POT_CREATE_FLAVOURS+=( "-f" "${FLAVOUR}_version" "-f" "${FLAVOUR}" )
+
 if [ "${config_runs_in_nomad}" == "true" ]; then
-    FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR+4"
-    POT_CREATE_FLAVOURS="$POT_CREATE_FLAVOURS $FLAVOUR+4"
+    FLAVOUR_FILES+=( "$FLAVOUR+4" )
+    POT_CREATE_FLAVOURS+=( "$FLAVOUR+4" )
 fi
 
-FLAVOUR_FILES="$FLAVOUR_FILES $FLAVOUR.sh $FLAVOUR.d/distfile.tar"
+FLAVOUR_FILES+=( "$FLAVOUR.sh" "$FLAVOUR.d/distfile.tar" )
 
-for file in $FLAVOUR_FILES; do
+for file in "${FLAVOUR_FILES[@]}"; do
   if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
     >&2 echo "$FLAVOURS_DIR/$FLAVOUR/$file missing"
     exit 1
@@ -122,20 +124,20 @@ for file in $FLAVOUR_FILES; do
 done
 
 step "Initialize"
-vagrant ssh-config $POTBUILDER > $SSHCONF
+vagrant ssh-config $POTBUILDER > "$SSHCONF"
 
 
 step "Test SSH connection"
 run_ssh true
 
 step "Remove existing remote $FLAVOUR.d"
-run_ssh rm -rf /usr/local/etc/pot/flavours/$FLAVOUR.d
+run_ssh "rm -rf /usr/local/etc/pot/flavours/\"${FLAVOUR}\".d"
 
 step "Remove existing remote $FLAVOUR files"
-run_ssh rm -f /usr/local/etc/pot/flavours/$FLAVOUR*
+run_ssh "rm -f /usr/local/etc/pot/flavours/\"$FLAVOUR\"*"
 
 step "Copy flavour files"
-tar -C "$FLAVOURS_DIR"/$FLAVOUR -cf - $FLAVOUR_FILES \
+tar -C "${FLAVOURS_DIR}/${FLAVOUR}" -cf - "${FLAVOUR_FILES[@]}" \
   | run_ssh tar -C /usr/local/etc/pot/flavours -xof -
 
 step "Create remote version flavour"
@@ -143,32 +145,33 @@ run_ssh "echo '#!/bin/sh
 set -e
 mkdir -p /usr/local/etc
 echo \"${FBSD_TAG}${VERSION_SUFFIX}\" \
->/usr/local/etc/${FLAVOUR}_version
-' | tee /usr/local/etc/pot/flavours/${FLAVOUR}_version.sh \
+>\"/usr/local/etc/${FLAVOUR}_version\"
+' | tee \"/usr/local/etc/pot/flavours/${FLAVOUR}_version.sh\" \
 >/dev/null
 "
 
 step "Set remote flavour permissions"
-run_ssh sudo chmod 775 \
-  /usr/local/etc/pot/flavours/${FLAVOUR}_version.sh \
-  /usr/local/etc/pot/flavours/$FLAVOUR.sh \
-  /usr/local/etc/pot/flavours/$FLAVOUR.d
+run_ssh "sudo chmod 775 \
+  \"/usr/local/etc/pot/flavours/${FLAVOUR}_version.sh\" \
+  \"/usr/local/etc/pot/flavours/$FLAVOUR.sh\" \
+  \"/usr/local/etc/pot/flavours/$FLAVOUR.d\"
+"
 
 step "Destroy old pot images"
-run_ssh "sudo pot destroy -F -p ${FLAVOUR}_\"$FBSD_TAG\" || true"
+run_ssh "sudo pot destroy -F -p \"${FLAVOUR}_${FBSD_TAG}\" || true"
 
 step "Verify pot images are gone"
-run_ssh "! sudo pot info -p ${FLAVOUR}_\"$FBSD_TAG\" >/dev/null"
+run_ssh "! sudo pot info -p \"${FLAVOUR}_${FBSD_TAG}\" >/dev/null"
 
 step "Build pot image"
 if [ -z "$ORIGIN" ]; then
-  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
-    pot create -b "$FBSD" -p ${FLAVOUR}_"$FBSD_TAG" \
-    -t single -N public-bridge ${POT_CREATE_FLAVOURS} -v
+  run_ssh sudo "RUNS_IN_NOMAD=\"${config_runs_in_nomad}\" \
+    pot create -b \"$FBSD\" -p \"${FLAVOUR}_${FBSD_TAG}\" \
+    -t single -N public-bridge ${POT_CREATE_FLAVOURS[*]} -v"
 else
-  run_ssh sudo RUNS_IN_NOMAD=${config_runs_in_nomad} \
-    pot clone -P "$ORIGIN" -p ${FLAVOUR}_"$FBSD_TAG" -F -v \
-    ${POT_CREATE_FLAVOURS}
+  run_ssh sudo "RUNS_IN_NOMAD=\"${config_runs_in_nomad}\" \
+    pot clone -P \"$ORIGIN\" -p \"${FLAVOUR}_${FBSD_TAG}\" -F -v \
+    ${POT_CREATE_FLAVOURS[*]}"
 
 #  if false; then
 #  # XXX: THIS IS HORRIBLE AND SHOULD MOVE TO POT
@@ -215,35 +218,35 @@ else
 fi
 
 step "Snapshot pot image"
-run_ssh sudo pot snapshot -p ${FLAVOUR}_"$FBSD_TAG"
+run_ssh "sudo pot snapshot -p \"${FLAVOUR}_${FBSD_TAG}\""
 
 step "Export pot"
-run_ssh sudo pot export -c -l 0 -p ${FLAVOUR}_"$FBSD_TAG" \
-  -t "$VERSION" -D /tmp
+run_ssh "sudo pot export -c -l 0 -p \"${FLAVOUR}_${FBSD_TAG}\" \
+  -t \"$VERSION\" -D /tmp"
 
 step "Copy pot image to local directory"
 scp -qF "$SSHCONF" \
-  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
-  "$POTBUILDER":/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
+  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
+  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
+  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein" \
   _build/tmp/.
 
 step "Clean up build vm"
 
 if [ "${config_keep}" != "true" ]; then
-  run_ssh sudo pot destroy -F -p ${FLAVOUR}_"$FBSD_TAG"
+  run_ssh "sudo pot destroy -F -p \"${FLAVOUR}_${FBSD_TAG}\""
 fi
 
 run_ssh sudo rm -f \
-  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
-  /tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
+  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
+  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein"
 
 step "Move image into place"
 mv \
-  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz \
-  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta \
-  _build/tmp/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein \
+  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
+  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
+  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein" \
   _build/artifacts/.
 
 # if DEBUG is enabled, dump the variables

@@ -74,7 +74,7 @@ esac
 
 function step {
   ((STEPCOUNT+=1))
-  STEP="$@"
+  STEP="$*"
   echo "$STEP" >> $LOGFILE
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
@@ -83,22 +83,23 @@ set -eE
 trap 'echo error: $STEP failed' ERR
 
 step "Load common source"
-source "${INCLUDE_DIR}"/common.sh
+source "${INCLUDE_DIR}/common.sh"
 
 step "Read config"
-read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config $POTTERY > $SSHCONF
+vagrant ssh-config "$POTTERY" > "$SSHCONF"
 
 step "Check if remote tmp has enough disk space available"
-diskneed=$(stat -f "%z" _build/artifacts/${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz)
+diskneed=$(stat -f "%z" \
+  "_build/artifacts/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz")
 ((diskneed *= 2))
 diskfree=$(echo "df /usr/local/www/pottery" \
-  | sftp -F $SSHCONF -q -b - "$POTTERY" \
+  | sftp -F "$SSHCONF" -q -b - "$POTTERY" \
   | grep -v "Avail" \
   | tail -n1 \
   | awk '{ print $3 }')
@@ -110,7 +111,7 @@ if [[ "$diskneed" -gt "$diskfree" ]]; then
 fi
 
 step "Copy files to remote tmp"
-sftp -F $SSHCONF -q -b - "$POTTERY" >/dev/null<<EOF
+sftp -F "$SSHCONF" -q -b - "$POTTERY" >/dev/null<<EOF
 lcd _build/artifacts
 cd /usr/local/www/pottery
 mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz

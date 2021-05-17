@@ -28,8 +28,8 @@ job "example" {
 
       config {
         image = "http://10.100.1.2"
-        pot = "example_12_2"
-        tag = "0.1"
+        pot = "example_%%freebsd_tag%%"
+        tag = "%%pot_version%%"
         command = "/usr/local/bin/cook"
         args = ["-h","'Param 1'","-n","'Param 2'"]
 

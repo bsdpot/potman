@@ -87,16 +87,16 @@ esac
 
 function run_ssh {
   if [ $DEBUG -eq 1 ]; then
-    ssh -F $SSHCONF "$MINIPOT" -- "$@" | tee -a $LOGFILE
-    return ${PIPESTATUS[0]}
+    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" | tee -a $LOGFILE
+    return "${PIPESTATUS[0]}"
   else
-    ssh -F $SSHCONF "$MINIPOT" -- "$@" >> $LOGFILE
+    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" >> $LOGFILE
   fi
 }
 
 function step {
   ((STEPCOUNT+=1))
-  STEP="$@"
+  STEP="$*"
   echo "$STEP" >> $LOGFILE
   [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
 }
@@ -105,10 +105,10 @@ set -eE
 trap 'echo error: $STEP failed' ERR
 
 step "Load common source"
-source "${INCLUDE_DIR}"/common.sh
+source "${INCLUDE_DIR}/common.sh"
 
 step "Read config"
-read_flavour_config "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.ini
+read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 if [ "${config_runs_in_nomad}" != "true" ]; then
   >&2 echo "Pot is not supposed to run in nomad"
@@ -119,10 +119,10 @@ VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config $MINIPOT > $SSHCONF
+vagrant ssh-config $MINIPOT > "$SSHCONF"
 
 step "Check if minipot has approx. enough diskspace available"
-diskfree=$(ssh -F $SSHCONF "$MINIPOT" -- df -m / | \
+diskfree=$(ssh -F "$SSHCONF" "$MINIPOT" -- df -m / | \
   tail -n1 | awk '{ print $4 }')
 
 if [[ "$DISK_MINFREE_MB" -gt "$diskfree" ]]; then
@@ -130,13 +130,13 @@ if [[ "$DISK_MINFREE_MB" -gt "$diskfree" ]]; then
   false
 fi
 
-if [ -e "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh ]; then
+if [ -e "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh" ]; then
   step "Load consul configuration"
-  env SSHCONF=$SSHCONF SUFFIX=$SUFFIX "$FLAVOURS_DIR"/$FLAVOUR/config_consul.sh
+  env SSHCONF="$SSHCONF" SUFFIX="$SUFFIX" "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh"
 fi
 
 step "Load job into minipot nomad"
-cat "$FLAVOURS_DIR"/$FLAVOUR/$FLAVOUR.d/minipot.job |\
+<"${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.d/minipot.job" \
   sed "s/%%freebsd_tag%%/$FBSD_TAG/g" |\
   sed "s/%%pot_version%%/$VERSION/g" |\
   sed "s/%%suffix%%/$SUFFIX/g" |\
