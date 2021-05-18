@@ -27,7 +27,7 @@ job "example" {
       }
 
       config {
-        image = "http://10.100.1.2"
+        image = "%%pottery%%"
         pot = "example_%%freebsd_tag%%"
         tag = "%%pot_version%%"
         command = "/usr/local/bin/cook"

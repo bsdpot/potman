@@ -6,15 +6,8 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
-MINIPOT=minipot
-POTTERY=pottery
-FLAVOURS_DIR=flavours
-SSHCONF=${SSHCONF:-_build/.ssh_conf}
-LOGFILE=_build/potprune.log
-FBSD=12.2
-FBSD_TAG=12_2
+FLAVOURS_DIR=""
 DATE=$(date "+%Y-%m-%d")
-STEPCOUNT=0
 
 POTTERY_PRUNE_AGE="+1h"
 MINIPOT_PRUNE_CACHE_AGE="+1h"
@@ -22,14 +15,14 @@ MINIPOT_PRUNE_POT_AGE="+1h"
 
 usage()
 {
-  echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+  echo "Usage: potman prune [-hv] [-d flavourdir] flavour"
 }
 
 OPTIND=1
 while getopts "hvd:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=${OPTARG}
+    FLAVOURS_DIR="${OPTARG}"
     ;;
   h)
     usage
@@ -47,6 +40,11 @@ done
 
 shift "$((OPTIND-1))"
 
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
+
 FLAVOUR=$1
 
 if [[ -z "$FLAVOUR" ]]; then
@@ -59,64 +57,30 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   exit 1
 fi
 
-case "$VERBOSE" in
-  [Yy][Ee][Ss]|1)
-    VERBOSE=1
-  ;;
-  *)
-    VERBOSE=0
-  ;;
-esac
-
-case "$DEBUG" in
-  [Yy][Ee][Ss]|1)
-    DEBUG=1
-  ;;
-  *)
-    DEBUG=0
-  ;;
-esac
-
-function run_ssh_minipot {
-  if [ $DEBUG -eq 1 ]; then
-    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" | tee -a $LOGFILE
-    return "${PIPESTATUS[0]}"
-  else
-    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" >> $LOGFILE
-  fi
-}
-
-function run_ssh_pottery {
-  if [ $DEBUG -eq 1 ]; then
-    ssh -F "$SSHCONF" "$POTTERY" -- "$@" | tee -a $LOGFILE
-    return "${PIPESTATUS[0]}"
-  else
-    ssh -F "$SSHCONF" "$POTTERY" -- "$@" >> $LOGFILE
-  fi
-}
-
-
-function step {
-  ((STEPCOUNT+=1))
-  STEP="$*"
-  echo "$STEP" >> $LOGFILE
-  [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
-}
-
 set -eE
 trap 'echo error: $STEP failed' ERR
-
-step "Load common source"
 source "${INCLUDE_DIR}/common.sh"
+common_init_vars
 
-step "Read config"
+step "Load potman config"
+read_potman_config potman.ini
+FREEBSD_VERSION="${config_freebsd_version}"
+FBSD="${FREEBSD_VERSION}"
+FBSD_TAG=${FREEBSD_VERSION//./_}
+
+if [ -z "${FLAVOURS_DIR}" ]; then
+  FLAVOURS_DIR="${config_flavours_dir}"
+fi
+
+step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config "$MINIPOT" "$POTTERY" > "$SSHCONF"
+init_pottery_ssh
+init_minipot_ssh
 
 step "Remove old files from pottery"
 # shellcheck disable=SC2016

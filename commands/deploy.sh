@@ -6,33 +6,27 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
-MINIPOT=minipot
 DISK_MINFREE_MB=4096
-FLAVOURS_DIR=flavours
-SSHCONF=${SSHCONF:-_build/.ssh_conf}
-LOGFILE=_build/pottest.log
-FBSD=12.2
-FBSD_TAG=12_2
+FLAVOURS_DIR=""
 DATE=$(date "+%Y-%m-%d")
-STEPCOUNT=0
 
 usage()
 {
-  echo "Usage: $0 [-hv] [-d flavourdir] [-s suffix] flavour"
+  echo "Usage: potman deploy [-hv] [-d flavourdir] [-s suffix] flavour"
 }
 
 OPTIND=1
 while getopts "hvd:s:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=${OPTARG}
+    FLAVOURS_DIR="${OPTARG}"
     ;;
   h)
     usage
     exit 0
     ;;
   s)
-    SUFFIX=${OPTARG}
+    SUFFIX="${OPTARG}"
     ;;
   v)
     VERBOSE="YES"
@@ -45,6 +39,11 @@ while getopts "hvd:s:" _o ; do
 done
 
 shift "$((OPTIND-1))"
+
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
 
 FLAVOUR=$1
 
@@ -67,48 +66,24 @@ if [[ -n "$SUFFIX" ]]; then
   PUBLIC_SUFFIX="-${SUFFIX}"
 fi
 
-case "$VERBOSE" in
-  [Yy][Ee][Ss]|1)
-    VERBOSE=1
-  ;;
-  *)
-    VERBOSE=0
-  ;;
-esac
-
-case "$DEBUG" in
-  [Yy][Ee][Ss]|1)
-    DEBUG=1
-  ;;
-  *)
-    DEBUG=0
-  ;;
-esac
-
-function run_ssh {
-  if [ $DEBUG -eq 1 ]; then
-    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" | tee -a $LOGFILE
-    return "${PIPESTATUS[0]}"
-  else
-    ssh -F "$SSHCONF" "$MINIPOT" -- "$@" >> $LOGFILE
-  fi
-}
-
-function step {
-  ((STEPCOUNT+=1))
-  STEP="$*"
-  echo "$STEP" >> $LOGFILE
-  [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
-}
-
 set -eE
 trap 'echo error: $STEP failed' ERR
-
-step "Load common source"
 source "${INCLUDE_DIR}/common.sh"
+common_init_vars
 
-step "Read config"
+step "Load potman config"
+read_potman_config potman.ini
+FREEBSD_VERSION="${config_freebsd_version}"
+FBSD="${FREEBSD_VERSION}"
+FBSD_TAG=${FREEBSD_VERSION//./_}
+
+if [ -z "${FLAVOURS_DIR}" ]; then
+  FLAVOURS_DIR="${config_flavours_dir}"
+fi
+
+step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
+NETWORK="${config_network}"
 
 if [ "${config_runs_in_nomad}" != "true" ]; then
   >&2 echo "Pot is not supposed to run in nomad"
@@ -119,10 +94,13 @@ VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config $MINIPOT > "$SSHCONF"
+init_minipot_ssh
+
+step "Test SSH connection"
+run_ssh_minipot true
 
 step "Check if minipot has approx. enough diskspace available"
-diskfree=$(ssh -F "$SSHCONF" "$MINIPOT" -- df -m / | \
+diskfree=$(ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- df -m / | \
   tail -n1 | awk '{ print $4 }')
 
 if [[ "$DISK_MINFREE_MB" -gt "$diskfree" ]]; then
@@ -132,16 +110,17 @@ fi
 
 if [ -e "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh" ]; then
   step "Load consul configuration"
-  env SSHCONF="$SSHCONF" SUFFIX="$SUFFIX" "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh"
+  env SSHCONF="$SSHCONF_MINIPOT" SUFFIX="$SUFFIX" "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh"
 fi
 
 step "Load job into minipot nomad"
 <"${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.d/minipot.job" \
+  sed "s/%%pottery%%/http:\/\/$NETWORK.2/g" |
   sed "s/%%freebsd_tag%%/$FBSD_TAG/g" |\
   sed "s/%%pot_version%%/$VERSION/g" |\
   sed "s/%%suffix%%/$SUFFIX/g" |\
   sed "s/%%public_suffix%%/$PUBLIC_SUFFIX/g" |\
-  run_ssh nomad run -
+  run_ssh_minipot nomad run -
 
 # if DEBUG is enabled, dump the variables
 if [ $DEBUG -eq 1 ]; then

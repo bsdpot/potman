@@ -8,9 +8,19 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 
 ## Quickstart
 
-To build the example flavour, simply type
+To create your own kiln, init the VMs, build and deploy an example image:
 
-    make
+    export PATH=$(pwd)/bin:$PATH
+    potman init -d "$(pwd)/flavours" mykiln
+    cd mykiln
+    potman packbox
+    potman startvms
+    potman build example
+    potman publish example
+    potman catalog
+    potman deploy example
+    ...
+    potman status
 
 This might take a while when run for the first time.
 
@@ -18,11 +28,20 @@ This might take a while when run for the first time.
 
 Create your own flavour like described in
 [this howto](https://potluck.honeyguide.net/howto/) and place it
-in the ./flavours directory of this repo.
+in the ./flavours directory of your kiln.
 
-Then run:
+    potman init mykiln
+    cd mykiln
+    ls flavours
+    ...
 
-    make FLAVOUR=myflavour
+## Stopping
+
+    potman stopvms
+
+## Destroying
+
+    potman destroyvms
 
 ## Dependencies
 
@@ -40,3 +59,22 @@ is:
     pkg install bash git packer py37-ansible vagrant virtualbox-ose
     service vboxnet enable
     service vboxnet start
+
+## Usage
+
+    Usage: potman command
+
+    Commands:
+
+        build       -- Build a flavour
+        catalog     -- See catalog contents
+        deploy      -- Test deploy image
+        destroyvms  -- Destroy VMs
+        help        -- Show usage
+        init        -- Initialize new kiln
+        packbox     -- Create vm box image
+        prune       -- Reclaim disk space
+        publish     -- Publish image to pottery
+        startvms    -- Start (and provision) VMs
+        status      -- Show status
+        stopvms     -- Stop VMs

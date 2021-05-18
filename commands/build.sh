@@ -4,27 +4,20 @@ if [ -z "$BASH_VERSION" ]; then
   >&2 echo "This needs to run in bash"
   exit 1
 fi
-INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
-POTBUILDER=potbuilder
-FLAVOURS_DIR=flavours
-SSHCONF=${SSHCONF:-_build/.ssh_conf}
-LOGFILE=_build/potbuild.log
-FBSD=12.2
-FBSD_TAG=12_2
+FLAVOURS_DIR=""
 DATE=$(date "+%Y-%m-%d")
-STEPCOUNT=0
 
 function usage()
 {
-  echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+  echo "Usage: potman build [-hv] [-d flavourdir] flavour"
 }
 
 OPTIND=1
 while getopts "hvd:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=${OPTARG}
+    FLAVOURS_DIR="${OPTARG}"
     ;;
   h)
     usage
@@ -42,6 +35,11 @@ done
 
 shift "$((OPTIND-1))"
 
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
+
 FLAVOUR=$1
 
 if [[ -z "$FLAVOUR" ]]; then
@@ -54,49 +52,28 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   exit 1
 fi
 
-case "$VERBOSE" in
-  [Yy][Ee][Ss]|1)
-    VERBOSE=1
-  ;;
-  *)
-    VERBOSE=0
-  ;;
-esac
-
-case "$DEBUG" in
-  [Yy][Ee][Ss]|1)
-    DEBUG=1
-  ;;
-  *)
-    DEBUG=0
-  ;;
-esac
-
 function run_ssh {
-  if [ $DEBUG -eq 1 ]; then
-    ssh -F "$SSHCONF" "$POTBUILDER" -- "$@" | tee -a "$LOGFILE"
-    return "${PIPESTATUS[0]}"
-  else
-    ssh -F "$SSHCONF" "$POTBUILDER" -- "$@" >> "$LOGFILE"
-  fi
-}
-
-function step {
-  ((STEPCOUNT+=1))
-  STEP="$*"
-  echo "$STEP" >> "$LOGFILE"
-  [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
+  run_ssh_potbuilder "$@"
 }
 
 set -eE
 trap 'echo error: $STEP failed' ERR
+source "${INCLUDE_DIR}/common.sh"
+common_init_vars
 
 mkdir -p _build/tmp _build/artifacts
 
-step "Load common source"
-source "${INCLUDE_DIR}"/common.sh
+step "Load potman config"
+read_potman_config potman.ini
+FREEBSD_VERSION="${config_freebsd_version}"
+FBSD="${FREEBSD_VERSION}"
+FBSD_TAG=${FREEBSD_VERSION//./_}
 
-step "Read config"
+if [ -z "${FLAVOURS_DIR}" ]; then
+  FLAVOURS_DIR="${config_flavours_dir}"
+fi
+
+step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
@@ -109,7 +86,7 @@ FLAVOUR_FILES=( "$FLAVOUR" )
 POT_CREATE_FLAVOURS=( "-f" "fbsd-update")
 POT_CREATE_FLAVOURS+=( "-f" "${FLAVOUR}_version" "-f" "${FLAVOUR}" )
 
-if [ "${config_runs_in_nomad}" == "true" ]; then
+if [ "${config_runs_in_nomad}" = "true" ]; then
     FLAVOUR_FILES+=( "$FLAVOUR+4" )
     POT_CREATE_FLAVOURS+=( "$FLAVOUR+4" )
 fi
@@ -124,8 +101,7 @@ for file in "${FLAVOUR_FILES[@]}"; do
 done
 
 step "Initialize"
-vagrant ssh-config $POTBUILDER > "$SSHCONF"
-
+init_potbuilder_ssh
 
 step "Test SSH connection"
 run_ssh true
@@ -225,7 +201,7 @@ run_ssh "sudo pot export -c -l 0 -p \"${FLAVOUR}_${FBSD_TAG}\" \
   -t \"$VERSION\" -D /tmp"
 
 step "Copy pot image to local directory"
-scp -qF "$SSHCONF" \
+scp -qF "$SSHCONF_POTBUILDER" \
   "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
   "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
   "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein" \

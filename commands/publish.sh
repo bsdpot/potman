@@ -6,25 +6,19 @@ if [ -z "$BASH_VERSION" ]; then
 fi
 INCLUDE_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
-POTTERY=pottery
-FLAVOURS_DIR=flavours
-SSHCONF=${SSHCONF:-_build/.ssh_conf}
-LOGFILE=_build/potpublish.log
-FBSD=12.2
-FBSD_TAG=12_2
+FLAVOURS_DIR=""
 DATE=$(date "+%Y-%m-%d")
-STEPCOUNT=0
 
 usage()
 {
-  echo "Usage: $0 [-hv] [-d flavourdir] flavour"
+  echo "Usage: potman publish [-hv] [-d flavourdir] flavour"
 }
 
 OPTIND=1
 while getopts "hvd:" _o ; do
   case "$_o" in
   d)
-    FLAVOURS_DIR=${OPTARG}
+    FLAVOURS_DIR="${OPTARG}"
     ;;
   h)
     usage
@@ -42,6 +36,11 @@ done
 
 shift "$((OPTIND-1))"
 
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
+
 FLAVOUR=$1
 
 if [[ -z "$FLAVOUR" ]]; then
@@ -54,52 +53,39 @@ if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
   exit 1
 fi
 
-case "$VERBOSE" in
-  [Yy][Ee][Ss]|1)
-    VERBOSE=1
-  ;;
-  *)
-    VERBOSE=0
-  ;;
-esac
-
-case "$DEBUG" in
-  [Yy][Ee][Ss]|1)
-    DEBUG=1
-  ;;
-  *)
-    DEBUG=0
-  ;;
-esac
-
-function step {
-  ((STEPCOUNT+=1))
-  STEP="$*"
-  echo "$STEP" >> $LOGFILE
-  [ $VERBOSE -eq 0 ] || echo "$STEPCOUNT. $STEP"
-}
-
 set -eE
 trap 'echo error: $STEP failed' ERR
+source "${INCLUDE_DIR}/common.sh"
+common_init_vars
 
 step "Load common source"
 source "${INCLUDE_DIR}/common.sh"
 
-step "Read config"
+step "Load potman config"
+read_potman_config potman.ini
+FREEBSD_VERSION="${config_freebsd_version}"
+FBSD="${FREEBSD_VERSION}"
+FBSD_TAG=${FREEBSD_VERSION//./_}
+
+if [ -z "${FLAVOURS_DIR}" ]; then
+  FLAVOURS_DIR="${config_flavours_dir}"
+fi
+
+step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
-vagrant ssh-config "$POTTERY" > "$SSHCONF"
+init_pottery_ssh
 
 step "Check if remote tmp has enough disk space available"
 diskneed=$(stat -f "%z" \
   "_build/artifacts/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz")
 ((diskneed *= 2))
 diskfree=$(echo "df /usr/local/www/pottery" \
-  | sftp -F "$SSHCONF" -q -b - "$POTTERY" \
+  | sftp -F "$SSHCONF_POTTERY" -q -b - "$POTTERY" \
   | grep -v "Avail" \
   | tail -n1 \
   | awk '{ print $3 }')
@@ -111,7 +97,7 @@ if [[ "$diskneed" -gt "$diskfree" ]]; then
 fi
 
 step "Copy files to remote tmp"
-sftp -F "$SSHCONF" -q -b - "$POTTERY" >/dev/null<<EOF
+sftp -F "$SSHCONF_POTTERY" -q -b - "$POTTERY" >/dev/null<<EOF
 lcd _build/artifacts
 cd /usr/local/www/pottery
 mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz
