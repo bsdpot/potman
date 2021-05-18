@@ -68,17 +68,18 @@ is:
 
 ## Usage
 
-    Usage: potman command
+    Usage: potman command [options]
 
     Commands:
 
         build       -- Build a flavour
         catalog     -- See catalog contents
+        consul      -- Run consul in minipot
         deploy      -- Test deploy image
         destroyvms  -- Destroy VMs
         help        -- Show usage
         init        -- Initialize new kiln
-        nomad       -- run nomad in minipot
+        nomad       -- Run nomad in minipot
         packbox     -- Create vm box image
         prune       -- Reclaim disk space
         publish     -- Publish image to pottery
