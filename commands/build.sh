@@ -40,17 +40,6 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 
-FLAVOUR=$1
-
-if [[ -z "$FLAVOUR" ]]; then
-  usage
-  exit 1
-fi
-
-if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
-  >&2 echo "Invalid flavour"
-  exit 1
-fi
 
 function run_ssh {
   run_ssh_potbuilder "$@"
@@ -60,6 +49,12 @@ set -eE
 trap 'echo error: $STEP failed' ERR
 source "${INCLUDE_DIR}/common.sh"
 common_init_vars
+
+FLAVOUR=$1
+if [[ ! "$FLAVOUR" =~ $FLAVOUR_REGEX ]]; then
+  >&2 echo "Invalid flavour"
+  exit 1
+fi
 
 mkdir -p _build/tmp _build/artifacts
 
@@ -146,8 +141,8 @@ if [ -z "$ORIGIN" ]; then
     -t single -N public-bridge ${POT_CREATE_FLAVOURS[*]} -v"
 else
   run_ssh sudo "RUNS_IN_NOMAD=\"${config_runs_in_nomad}\" \
-    pot clone -P \"$ORIGIN\" -p \"${FLAVOUR}_${FBSD_TAG}\" -F -v \
-    ${POT_CREATE_FLAVOURS[*]}"
+    pot clone -P \"${ORIGIN}_${FBSD_TAG}\" \
+    -p \"${FLAVOUR}_${FBSD_TAG}\" -F -v ${POT_CREATE_FLAVOURS[*]}"
 
 #  if false; then
 #  # XXX: THIS IS HORRIBLE AND SHOULD MOVE TO POT

@@ -41,22 +41,16 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 
-FLAVOUR=$1
-
-if [[ -z "$FLAVOUR" ]]; then
-  usage
-  exit 1
-fi
-
-if [[ ! "$FLAVOUR" =~ ^[a-zA-Z][a-zA-Z0-9]{1,15}$ ]]; then
-  >&2 echo "Invalid flavour"
-  exit 1
-fi
-
 set -eE
 trap 'echo error: $STEP failed' ERR
 source "${INCLUDE_DIR}/common.sh"
 common_init_vars
+
+FLAVOUR=$1
+if [[ ! "$FLAVOUR" =~ $FLAVOUR_REGEX ]]; then
+  >&2 echo "Invalid flavour"
+  exit 1
+fi
 
 step "Load common source"
 source "${INCLUDE_DIR}/common.sh"
