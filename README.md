@@ -22,7 +22,8 @@ To create your own kiln, init the VMs, build and deploy an example image:
     ...
     potman status
     potman nomad status example
-    potman nomad alloc logs 2fbb4207
+    potman nomad logs 2fbb4207
+    potman nomad logs -f -stderr 2fbb4207
 
 This might take a while when run for the first time.
 
