@@ -21,6 +21,8 @@ To create your own kiln, init the VMs, build and deploy an example image:
     potman deploy example
     ...
     potman status
+    potman nomad status example
+    potman nomad alloc logs 2fbb4207
 
 This might take a while when run for the first time.
 
@@ -72,6 +74,7 @@ is:
         destroyvms  -- Destroy VMs
         help        -- Show usage
         init        -- Initialize new kiln
+        nomad       -- run nomad in minipot
         packbox     -- Create vm box image
         prune       -- Reclaim disk space
         publish     -- Publish image to pottery
