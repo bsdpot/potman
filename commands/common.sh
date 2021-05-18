@@ -149,11 +149,12 @@ Commands:
 
     build       -- Build a flavour
     catalog     -- See catalog contents
+    consul      -- Run consul in minipot
     deploy      -- Test deploy image
     destroyvms  -- Destroy VMs
     help        -- Show usage
     init        -- Initialize new kiln
-    nomad       -- run nomad in minipot
+    nomad       -- Run nomad in minipot
     packbox     -- Create vm box image
     prune       -- Reclaim disk space
     publish     -- Publish image to pottery
@@ -204,7 +205,7 @@ function main() {
   fi
 
   case "${CMD}" in
-    build|catalog|deploy|destroyvms|init|nomad|packbox|\
+    build|catalog|consul|deploy|destroyvms|init|nomad|packbox|\
     prune|publish|startvms|status|stopvms)
        exec \
          env INCLUDE_DIR="$(dirname "${BASH_SOURCE[0]}")" \

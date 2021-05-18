@@ -9,7 +9,7 @@ DATE=$(date "+%Y-%m-%d")
 
 usage()
 {
-  echo "Usage: potman nomad ..."
+  echo "Usage: potman consul ..."
 }
 
 set -eE
@@ -26,8 +26,8 @@ FBSD_TAG=${FREEBSD_VERSION//./_}
 step "Initialize"
 init_minipot_ssh
 
-step "Execute nomad command in minipot"
-ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- nomad "$@"
+step "Execute consul command in minipot"
+ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- consul "$@"
 
 # if DEBUG is enabled, dump the variables
 if [ "$DEBUG" -eq 1 ]; then
