@@ -46,6 +46,16 @@ common_init_vars
 
 mkdir -p _build
 
+step "Check tooling"
+ansible --version >/dev/null
+git --version >/dev/null
+vagrant --version >/dev/null
+vboxheadless --version >/dev/null
+
+step "Make sure vagrant plugins are installed"
+(vagrant plugin list | grep "vagrant-disksize" >/dev/null)\
+  || vagrant plugin install vagrant-disksize
+
 step "Start vagrant vms"
 vagrant up --provision "${MACHINES[@]}"
 

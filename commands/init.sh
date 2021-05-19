@@ -9,6 +9,7 @@ usage()
 {
   echo "Usage: potman init [-hv] [-d flavourdir] [-n network] [-r freebsd_version] kiln_name
 
+    flavourdir defaults to 'flavours'
     network defaults to '10.100.1'
     freebd_version defaults to '13.0'
 "

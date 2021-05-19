@@ -10,11 +10,24 @@ DATE=$(date "+%Y-%m-%d")
 
 function usage()
 {
-  echo "Usage: potman build [-hv] [-d flavourdir] flavour"
+  echo "Usage: potman build [-hpv] [-d flavourdir] flavour
+
+Options:
+    -d   Directory containing flavours
+    -h   Help
+    -p   Run 'potman publish' after build
+    -v   Verbose
+
+flavour is the flavour to build. If it contains slashes,
+it will be taken as the direct path to a flavour (regardless
+of what is in the d parameter).
+"
 }
 
+RUN_PUBLISH="NO"
+
 OPTIND=1
-while getopts "hvd:" _o ; do
+while getopts "hpvd:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -22,6 +35,9 @@ while getopts "hvd:" _o ; do
   h)
     usage
     exit 0
+    ;;
+  p)
+    RUN_PUBLISH="YES"
     ;;
   v)
     VERBOSE="YES"
@@ -51,6 +67,10 @@ source "${INCLUDE_DIR}/common.sh"
 common_init_vars
 
 FLAVOUR=$1
+if [[ "${FLAVOUR}" == */* ]]; then
+  FLAVOURS_DIR="$(dirname "${FLAVOUR}")"
+  FLAVOUR="$(basename "${FLAVOUR}")"
+fi
 if [[ ! "$FLAVOUR" =~ $FLAVOUR_REGEX ]]; then
   >&2 echo "Invalid flavour"
   exit 1
@@ -101,11 +121,9 @@ init_potbuilder_ssh
 step "Test SSH connection"
 run_ssh true
 
-step "Remove existing remote $FLAVOUR.d"
-run_ssh "rm -rf /usr/local/etc/pot/flavours/\"${FLAVOUR}\".d"
-
+# XXX: this reomves everything starting with $FLAVOUR
 step "Remove existing remote $FLAVOUR files"
-run_ssh "rm -f /usr/local/etc/pot/flavours/\"$FLAVOUR\"*"
+run_ssh "rm -rf /usr/local/etc/pot/flavours/\"$FLAVOUR\"*"
 
 step "Copy flavour files"
 tar -C "${FLAVOURS_DIR}/${FLAVOUR}" -cf - "${FLAVOUR_FILES[@]}" \
@@ -233,4 +251,12 @@ if [ "$DEBUG" -eq 1 ]; then
     printf "\n\n"
 fi
 
-step "Success"
+if [[ "$RUN_PUBLISH" = "YES" ]]; then
+  # kind of a hack
+  step "Success, now exec publish"
+  export VERBOSE
+  LOGFILE="$(dirname "$LOGFILE")"/publish.log
+  exec_potman publish -d "${FLAVOURS_DIR}" "${FLAVOUR}"
+else
+  step "Success"
+fi

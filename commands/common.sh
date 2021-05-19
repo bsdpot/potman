@@ -146,7 +146,6 @@ function main_usage() {
 Usage: $0 command
 
 Commands:
-
     build       -- Build a flavour
     catalog     -- See catalog contents
     consul      -- Run consul in minipot
@@ -162,6 +161,15 @@ Commands:
     status      -- Show status
     stopvms     -- Stop VMs
 "
+}
+
+function exec_potman() {
+  CMD=$1
+  shift
+  exec \
+    env INCLUDE_DIR="$(dirname "${BASH_SOURCE[0]}")" \
+    env LOGFILE="${LOGFILE}" \
+    "${INCLUDE_DIR}/${CMD}.sh" "$@"
 }
 
 function main() {
@@ -207,10 +215,7 @@ function main() {
   case "${CMD}" in
     build|catalog|consul|deploy|destroyvms|init|nomad|packbox|\
     prune|publish|startvms|status|stopvms)
-       exec \
-         env INCLUDE_DIR="$(dirname "${BASH_SOURCE[0]}")" \
-         env LOGFILE="${LOGFILE}" \
-         "${INCLUDE_DIR}/${CMD}.sh" "${ARGS[@]}"
+       exec_potman "${CMD}" "${ARGS[@]}"
       ;;
     *)
       main_usage

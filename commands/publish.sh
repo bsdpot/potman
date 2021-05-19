@@ -11,7 +11,17 @@ DATE=$(date "+%Y-%m-%d")
 
 usage()
 {
-  echo "Usage: potman publish [-hv] [-d flavourdir] flavour"
+  echo "Usage: potman publish [-hv] [-d flavourdir] flavour
+
+Options:
+    -d   Directory containing flavours
+    -h   Help
+    -v   Verbose
+
+flavour is the flavour to publish. If it contains slashes,
+it will be taken as the direct path to a flavour (regardless
+of what is in the d parameter).
+"
 }
 
 OPTIND=1
@@ -47,6 +57,10 @@ source "${INCLUDE_DIR}/common.sh"
 common_init_vars
 
 FLAVOUR=$1
+if [[ "${FLAVOUR}" == */* ]]; then
+  FLAVOURS_DIR="$(dirname "${FLAVOUR}")"
+  FLAVOUR="$(basename "${FLAVOUR}")"
+fi
 if [[ ! "$FLAVOUR" =~ $FLAVOUR_REGEX ]]; then
   >&2 echo "Invalid flavour"
   exit 1

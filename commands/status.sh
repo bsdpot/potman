@@ -47,12 +47,36 @@ FREEBSD_VERSION="${config_freebsd_version}"
 FBSD="${FREEBSD_VERSION}"
 FBSD_TAG=${FREEBSD_VERSION//./_}
 
+step "Check tooling"
+ansible --version >/dev/null
+git --version >/dev/null
+vagrant --version >/dev/null
+vboxheadless --version >/dev/null
+
+step "Make sure vagrant plugins are installed"
+(vagrant plugin list | grep "vagrant-disksize" >/dev/null)\
+  || vagrant plugin install vagrant-disksize
+
 step "Show vagrant status"
-vagrant status
+echo "
+===> Vagrant status <==="
+vagrant status | grep -E "($MINIPOT|$POTBUILDER|$POTTERY)"
 
 step "Check nomad cluster status"
+echo "
+===> Nomad status <==="
 init_minipot_ssh
 ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- nomad status
+
+step "Check consul status"
+echo "
+===> Consul status <==="
+echo "> Datacenters:"
+ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- consul catalog datacenters
+echo "> Nodes:"
+ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- consul catalog nodes
+echo "> Services:"
+ssh -F "$SSHCONF_MINIPOT" "$MINIPOT" -- consul catalog services
 
 # if DEBUG is enabled, dump the variables
 if [ "$DEBUG" -eq 1 ]; then
