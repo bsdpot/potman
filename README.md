@@ -62,7 +62,7 @@ potman requires
 Installing these depends on your OS/distribution, on FreeBSD the procedure
 is:
 
-    pkg install bash git packer py37-ansible vagrant virtualbox-ose
+    pkg install bash git packer py38-ansible vagrant virtualbox-ose
     service vboxnet enable
     service vboxnet start
 
