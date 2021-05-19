@@ -10,6 +10,8 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 
 To create your own kiln, init the VMs, build and deploy an example image:
 
+    git clone https://github.com/potman
+    cd potman
     export PATH=$(pwd)/bin:$PATH
     potman init -d "$(pwd)/flavours" mykiln
     cd mykiln
@@ -72,7 +74,6 @@ is:
     Usage: potman command [options]
 
     Commands:
-
         build       -- Build a flavour
         catalog     -- See catalog contents
         consul      -- Run consul in minipot
