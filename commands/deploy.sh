@@ -12,13 +12,14 @@ DATE=$(date "+%Y-%m-%d")
 
 usage()
 {
-  echo "Usage: potman deploy [-hv] [-d flavourdir] [-s suffix] flavour
+  echo "Usage: potman deploy [-hqv] [-d flavourdir] [-s suffix] flavour
 
 Options:
     -d   Directory containing flavours
     -s   Suffix used in nomad job (allows to run multiple deployments
          in parallel)
     -h   Help
+    -q   Quick (do not execute special scripts)
     -v   Verbose
 
 flavour is the flavour to deploy. If it contains slashes,
@@ -27,8 +28,10 @@ of what is in the d parameter).
 "
 }
 
+QUICK="NO"
+
 OPTIND=1
-while getopts "hvd:s:" _o ; do
+while getopts "hqvd:s:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -36,6 +39,9 @@ while getopts "hvd:s:" _o ; do
   h)
     usage
     exit 0
+    ;;
+  q)
+    QUICK="YES"
     ;;
   s)
     SUFFIX="${OPTARG}"
@@ -119,7 +125,8 @@ if [[ "$DISK_MINFREE_MB" -gt "$diskfree" ]]; then
   false
 fi
 
-if [ -e "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh" ]; then
+if [ -e "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh" ] &&
+    [ "$QUICK" != "YES" ]; then
   step "Load consul configuration"
   env SSHCONF="$SSHCONF_MINIPOT" SUFFIX="$SUFFIX" "${FLAVOURS_DIR}/${FLAVOUR}/config_consul.sh"
 fi
@@ -135,15 +142,15 @@ step "Load job into minipot nomad"
 
 # if DEBUG is enabled, dump the variables
 if [ $DEBUG -eq 1 ]; then
-    printf "\n\n"
-    echo "Dump of variables"
-    echo "================="
-    echo "FBSD: $FBSD"
-    echo "FBSD_TAG: $FBSD_TAG"
-    echo "Version: $VERSION with suffix: $VERSION_SUFFIX"
-    printf "\n\n"
-    echo "Date: $DATE"
-    printf "\n\n"
+  printf "\n\n"
+  echo "Dump of variables"
+  echo "================="
+  echo "FBSD: $FBSD"
+  echo "FBSD_TAG: $FBSD_TAG"
+  echo "Version: $VERSION with suffix: $VERSION_SUFFIX"
+  printf "\n\n"
+  echo "Date: $DATE"
+  printf "\n\n"
 fi
 
 step "Success"

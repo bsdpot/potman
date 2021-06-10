@@ -10,10 +10,11 @@ DATE=$(date "+%Y-%m-%d")
 
 function usage()
 {
-  echo "Usage: potman build [-hpv] [-d flavourdir] flavour
+  echo "Usage: potman build [-hpv] [-d flavourdir] [-l level] flavour
 
 Options:
     -d   Directory containing flavours
+    -l   Compression level (0 by default)
     -h   Help
     -p   Run 'potman publish' after build
     -v   Verbose
@@ -25,12 +26,16 @@ of what is in the d parameter).
 }
 
 RUN_PUBLISH="NO"
+COMPRESSION_LEVEL="0"
 
 OPTIND=1
-while getopts "hpvd:" _o ; do
+while getopts "hpvd:l:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
+    ;;
+  l)
+    COMPRESSION_LEVEL="${OPTARG}"
     ;;
   h)
     usage
@@ -210,7 +215,9 @@ step "Snapshot pot image"
 run_ssh "sudo pot snapshot -p \"${FLAVOUR}_${FBSD_TAG}\""
 
 step "Export pot"
-run_ssh "sudo pot export -c -l 0 -p \"${FLAVOUR}_${FBSD_TAG}\" \
+run_ssh "sudo pot export -c \
+  -l \"${COMPRESSION_LEVEL}\" \
+  -p \"${FLAVOUR}_${FBSD_TAG}\" \
   -t \"$VERSION\" -D /tmp"
 
 step "Copy pot image to local directory"

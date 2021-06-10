@@ -109,6 +109,11 @@ cat >site.yml<<"EOF"
 - hosts: potbuilder
   tasks:
 
+  - name: Disable coredumps
+    sysctl:
+      name: kern.coredump
+      value: '0'
+
   - name: Create pkg config directory
     file: path=/usr/local/etc/pkg/repos state=directory mode=0755
 
