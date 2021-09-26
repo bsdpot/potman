@@ -111,10 +111,10 @@ if [ "${config_runs_in_nomad}" = "true" ]; then
     POT_CREATE_FLAVOURS+=( "$FLAVOUR+4" )
 fi
 
-FLAVOUR_FILES+=( "$FLAVOUR.sh" "$FLAVOUR.d/distfile.tar" )
+FLAVOUR_FILES+=( "$FLAVOUR.sh" "$FLAVOUR.d" )
 
 for file in "${FLAVOUR_FILES[@]}"; do
-  if [[ ! -f "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
+  if [[ ! -e "$FLAVOURS_DIR"/$FLAVOUR/"$file" ]]; then
     >&2 echo "$FLAVOURS_DIR/$FLAVOUR/$file missing"
     exit 1
   fi
