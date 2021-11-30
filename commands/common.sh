@@ -9,7 +9,7 @@ FREEBSD_VERSION_REGEX='^(12\.2|13\.0)$'
 # poor
 NETWORK_REGEX='^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$'
 # shellcheck disable=SC2034
-FLAVOUR_REGEX='^[a-zA-Z][a-zA-Z0-9-]{0,14}[a-zA-Z0-9]$'
+FLAVOUR_REGEX='^[a-zA-Z][a-zA-Z0-9-]{0,19}[a-zA-Z0-9]$'
 
 MINIPOT=minipot
 POTBUILDER=potbuilder

@@ -10,12 +10,13 @@ DATE=$(date "+%Y-%m-%d")
 
 function usage()
 {
-  echo "Usage: potman build [-hpv] [-d flavourdir] [-l level] flavour
+  echo "Usage: potman build [-hpv] [-d flavourdir] [-o origin] [-l level] flavour
 
 Options:
     -d   Directory containing flavours
     -l   Compression level (0 by default)
     -h   Help
+    -o   Image to base the flavour on (overrides config)
     -p   Run 'potman publish' after build
     -v   Verbose
 
@@ -29,7 +30,7 @@ RUN_PUBLISH="NO"
 COMPRESSION_LEVEL="0"
 
 OPTIND=1
-while getopts "hpvd:l:" _o ; do
+while getopts "hpvd:o:l:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -40,6 +41,9 @@ while getopts "hpvd:l:" _o ; do
   h)
     usage
     exit 0
+    ;;
+  o)
+    ORIGIN="${OPTARG}"
     ;;
   p)
     RUN_PUBLISH="YES"
@@ -99,7 +103,9 @@ read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 VERSION="${config_version}"
 VERSION_SUFFIX="_$VERSION"
 
-ORIGIN="${config_origin}"
+if [ -z "$ORIGIN" ]; then
+  ORIGIN="${config_origin}"
+fi
 
 FLAVOUR_FILES=( "$FLAVOUR" )
 
