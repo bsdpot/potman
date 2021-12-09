@@ -138,30 +138,6 @@ cat >site.yml<<"EOF"
         POT_GATEWAY=10.192.0.1
         POT_EXTIF=vtnet0
 
-  - name: Install experimental pot patches
-    get_url:
-      url: "https://raw.githubusercontent.com/grembo/pot/\
-        layered-images/{{item.file}}"
-      dest: "/usr/local/{{item.file}}"
-      checksum: "sha256:\
-        {{item.checksum}}"
-      mode: "{{item.mode}}"
-    with_items:
-    - { file: "bin/pot", mode: "0755", checksum: "\
-        11f49c8e763b96b0ac14a174d814bb8c888d7e21b01b8e0792190cc5b3eb3b06" }
-    - { file: "share/pot/clone.sh", mode: "0644", checksum: "\
-        72a713e958ab853e7bd0035af66a5e5031411ea136a595fbefbb7c962bf450b1" }
-    - { file: "share/pot/common-flv.sh", mode: "0644", checksum: "\
-        a03c64f341f92e2589ef39d2f5faa0ac3bbef6a828e914a8a7848dc890d597d3" }
-    - { file: "share/pot/common.sh", mode: "0644", checksum: "\
-        957c825222ca623dd00680bf7f74c8e4381f09576fc08433bf833b0ff91c4b2a" }
-    - { file: "share/pot/create.sh", mode: "0644", checksum: "\
-        0896a67bc379c0ec0c431dac248bb99a096399765b8286ead14d96ef476aa461" }
-    - { file: "share/pot/export.sh", mode: "0644", checksum: "\
-        733c2ecebad984fa56822d2e1985745269b40d57f1e5a85db2918d4846eaa5a0" }
-    - { file: "share/pot/import.sh", mode: "0644", checksum: "\
-        03284645966d22341ea9720f20c86af28e391d9e3011b23a87ba6790ffd94f19" }
-
   - name: Set flavours directory permissions
     ansible.builtin.file:
       path: /usr/local/etc/pot/flavours
@@ -261,30 +237,6 @@ cat >site.yml<<"EOF"
         POT_NETMASK=255.192.0.0
         POT_GATEWAY=10.192.0.1
         POT_EXTIF=vtnet0
-
-  - name: Install experimental pot patches
-    get_url:
-      url: "https://raw.githubusercontent.com/grembo/pot/\
-        layered-images/{{item.file}}"
-      dest: "/usr/local/{{item.file}}"
-      checksum: "sha256:\
-        {{item.checksum}}"
-      mode: "{{item.mode}}"
-    with_items:
-    - { file: "bin/pot", mode: "0755", checksum: "\
-        11f49c8e763b96b0ac14a174d814bb8c888d7e21b01b8e0792190cc5b3eb3b06" }
-    - { file: "share/pot/clone.sh", mode: "0644", checksum: "\
-        72a713e958ab853e7bd0035af66a5e5031411ea136a595fbefbb7c962bf450b1" }
-    - { file: "share/pot/common-flv.sh", mode: "0644", checksum: "\
-        a03c64f341f92e2589ef39d2f5faa0ac3bbef6a828e914a8a7848dc890d597d3" }
-    - { file: "share/pot/common.sh", mode: "0644", checksum: "\
-        957c825222ca623dd00680bf7f74c8e4381f09576fc08433bf833b0ff91c4b2a" }
-    - { file: "share/pot/create.sh", mode: "0644", checksum: "\
-        0896a67bc379c0ec0c431dac248bb99a096399765b8286ead14d96ef476aa461" }
-    - { file: "share/pot/export.sh", mode: "0644", checksum: "\
-        733c2ecebad984fa56822d2e1985745269b40d57f1e5a85db2918d4846eaa5a0" }
-    - { file: "share/pot/import.sh", mode: "0644", checksum: "\
-        03284645966d22341ea9720f20c86af28e391d9e3011b23a87ba6790ffd94f19" }
 
   - name: Run pot init
     ansible.builtin.command:
