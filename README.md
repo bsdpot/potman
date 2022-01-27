@@ -6,11 +6,21 @@ Uses [Potluck](https://potluck.honeyguide.net) templates, see also
 the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 [FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
-## Quickstart
+## Preparation 
 Make sure your username is added to the `vboxusers` group to run VirtualBox:
 
     (sudo) pw groupmod vboxusers -m <username>
 
+Set the valid ranges for Virtualbox in `/etc/vbox/networks.conf`:
+
+    mkdir -p /etc/vbox
+    vi /etc/vbox/networks.conf
+
+    (add, with asterisk)
+
+    * 10.100.0.0/16
+
+## Quickstart
 To create your own kiln, init the VMs, build and deploy an example image:
 
     git clone https://github.com/grembo/potman
