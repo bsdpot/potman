@@ -10,7 +10,7 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 
 To create your own kiln, init the VMs, build and deploy an example image:
 
-    git clone https://github.com/potman
+    git clone https://github.com/grembo/potman
     cd potman
     export PATH=$(pwd)/bin:$PATH
     potman init -d "$(pwd)/flavours" mykiln
@@ -119,7 +119,7 @@ Build the base image used in the origin and publish it to the pottery:
 This base image can be used as a shared basis for all potluck images to
 reduce their size and speed up build/deployment.
 
-Contruct a compatible flavour from the potluck flavour:
+Construct a compatible flavour from the potluck flavour:
 
     cp -a ../../potluck/git-nomad flavours/.
     touch flavours/git-nomad/git-nomad
