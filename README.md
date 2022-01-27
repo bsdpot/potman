@@ -7,6 +7,9 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 [FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
 ## Quickstart
+Make sure your username is added to the `vboxusers` group to run VirtualBox:
+
+    (sudo) pw groupmod vboxusers -m <username>
 
 To create your own kiln, init the VMs, build and deploy an example image:
 
@@ -29,6 +32,10 @@ To create your own kiln, init the VMs, build and deploy an example image:
     ...
 
 This might take a while when run for the first time.
+
+To make the path addition permanent, add the following to your .profile (or similar) for your shell:
+
+    PATH=/home/<username>/potman/bin:$PATH; export PATH
 
 ## Building Your Own Flavour
 
