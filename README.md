@@ -7,10 +7,9 @@ the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
 [FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
 ## Quickstart
-
 To create your own kiln, init the VMs, build and deploy an example image:
 
-    git clone https://github.com/potman
+    git clone https://github.com/grembo/potman
     cd potman
     export PATH=$(pwd)/bin:$PATH
     potman init -d "$(pwd)/flavours" mykiln
@@ -69,6 +68,25 @@ is:
     service vboxnet enable
     service vboxnet start
 
+Make sure your username is added to the `vboxusers` group to run 
+VirtualBox, on FreeBSD the procedure is:
+
+    (sudo) pw groupmod vboxusers -m <username>
+
+Set the valid ranges for Virtualbox in `/etc/vbox/networks.conf`:
+
+    mkdir -p /etc/vbox
+    vi /etc/vbox/networks.conf
+
+    (add, with asterisk)
+
+    * 10.100.0.0/16
+
+To make the path addition permanent, add the following to .profile (or 
+similar) for your shell:
+
+    PATH=/home/<username>/potman/bin:$PATH; export PATH
+
 ## Usage
 
     Usage: potman command [options]
@@ -119,7 +137,7 @@ Build the base image used in the origin and publish it to the pottery:
 This base image can be used as a shared basis for all potluck images to
 reduce their size and speed up build/deployment.
 
-Contruct a compatible flavour from the potluck flavour:
+Construct a compatible flavour from the potluck flavour:
 
     cp -a ../../potluck/git-nomad flavours/.
     touch flavours/git-nomad/git-nomad
