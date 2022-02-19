@@ -86,7 +86,9 @@ step "Init kiln"
 mkdir "$KILN_NAME"
 git init "$KILN_NAME" >/dev/null
 cd "$KILN_NAME"
-git branch -m master main
+if [ "$(git branch --show-current)" = "master" ]; then
+  git branch -m master main
+fi
 
 if [ "${FLAVOURS_DIR}" = "flavours" ]; then
   mkdir flavours
