@@ -84,8 +84,9 @@ fi
 
 step "Init kiln"
 mkdir "$KILN_NAME"
-git init -b main "$KILN_NAME" >/dev/null
+git init "$KILN_NAME" >/dev/null
 cd "$KILN_NAME"
+git branch -m master main
 
 if [ "${FLAVOURS_DIR}" = "flavours" ]; then
   mkdir flavours
