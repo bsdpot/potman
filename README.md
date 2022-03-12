@@ -75,12 +75,11 @@ VirtualBox, on FreeBSD the procedure is:
 
 Set the valid ranges for Virtualbox in `/etc/vbox/networks.conf`:
 
-    mkdir -p /etc/vbox
-    vi /etc/vbox/networks.conf
+    mkdir -p /usr/local/etc/vbox
+    echo "* 10.100.0.0/16" >>/usr/local/etc/vbox/networks.conf
 
-    (add, with asterisk)
-
-    * 10.100.0.0/16
+Note: Prior to virtualbox-ose port version 6.1.32_1, networks.conf
+is expected to reside in /etc/vbox/networks.conf.
 
 To make the path addition permanent, add the following to .profile (or 
 similar) for your shell:
