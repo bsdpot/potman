@@ -73,13 +73,18 @@ VirtualBox, on FreeBSD the procedure is:
 
     (sudo) pw groupmod vboxusers -m <username>
 
-Set the valid ranges for Virtualbox in `/etc/vbox/networks.conf`:
+Set the valid ranges for Virtualbox in `/usr/local/etc/vbox/networks.conf`:
 
     mkdir -p /usr/local/etc/vbox
     echo "* 10.100.0.0/16" >>/usr/local/etc/vbox/networks.conf
 
 Note: Prior to virtualbox-ose port version 6.1.32_1, networks.conf
-is expected to reside in /etc/vbox/networks.conf.
+is expected to reside in /etc/vbox/networks.conf. The vagrant port
+on FreeBSD also expects the file to exist there at the time of writing,
+so it's best to symlink the directory:
+
+    cd /etc
+    ln -s ../usr/local/etc/vbox .
 
 To make the path addition permanent, add the following to .profile (or 
 similar) for your shell:

@@ -11,11 +11,11 @@ usage()
 
     flavourdir defaults to 'flavours'
     network defaults to '10.100.1'
-    freebd_version defaults to '13.0'
+    freebd_version defaults to '13.1'
 "
 }
 
-FREEBSD_VERSION=13.0
+FREEBSD_VERSION=13.1
 FLAVOURS_DIR=flavours
 
 OPTIND=1
@@ -221,6 +221,12 @@ cat >site.yml<<"EOF"
         - minipot
         - vault
       state: present
+
+  - name: Fix nomad path permission
+    ansible.builtin.file:
+      path: /var/tmp/nomad
+      state: directory
+      mode: '0700'
 
   - name: Download minipot-traefik.toml
     get_url:
