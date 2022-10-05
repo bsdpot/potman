@@ -43,6 +43,7 @@ set -eE
 trap 'echo error: $STEP failed' ERR
 source "${INCLUDE_DIR}/common.sh"
 common_init_vars
+exit_if_vmm_loaded
 
 mkdir -p _build
 

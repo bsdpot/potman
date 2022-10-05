@@ -172,6 +172,16 @@ function exec_potman() {
     "${INCLUDE_DIR}/${CMD}.sh" "$@"
 }
 
+# only makes sense on FreeBSD, noop on other platforms
+function exit_if_vmm_loaded() {
+  if command -v "kldstat" >/dev/null 2>&1; then
+    if kldstat -qm vmm; then
+      >&2 echo "Please unload kernel module vmm, it breaks virtualbox"
+      exit 1
+    fi
+  fi
+}
+
 function main() {
   set -e
 
