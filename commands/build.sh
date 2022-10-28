@@ -10,27 +10,31 @@ DATE=$(date "+%Y-%m-%d")
 
 function usage()
 {
-  echo "Usage: potman build [-hpv] [-d flavourdir] [-o origin] [-l level] flavour
+  cat <<-"EOF"
+	Usage: potman build [-hpv] [-d flavourdir] [-o origin]"
+	                    [-l level] [-V version] flavour
 
-Options:
-    -d   Directory containing flavours
-    -l   Compression level (0 by default)
-    -h   Help
-    -o   Image to base the flavour on (overrides config)
-    -p   Run 'potman publish' after build
-    -v   Verbose
+	Options:
+	    -d   Directory containing flavours
+	    -l   Compression level (0 by default)
+	    -h   Help
+	    -o   Image to base the flavour on (overrides config)
+	    -p   Run 'potman publish' after build
+	    -V   Override image version
+	    -v   Verbose
 
-flavour is the flavour to build. If it contains slashes,
-it will be taken as the direct path to a flavour (regardless
-of what is in the d parameter).
-"
+	flavour is the flavour to build. If it contains slashes,
+	it will be taken as the direct path to a flavour (regardless
+	of what is in the d parameter).
+	EOF
 }
 
 RUN_PUBLISH="NO"
 COMPRESSION_LEVEL="0"
+VERSION=
 
 OPTIND=1
-while getopts "hpvd:o:l:" _o ; do
+while getopts "hpvd:o:l:V:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -47,6 +51,9 @@ while getopts "hpvd:o:l:" _o ; do
     ;;
   p)
     RUN_PUBLISH="YES"
+    ;;
+  V)
+    VERSION="${OPTARG}"
     ;;
   v)
     VERBOSE="YES"
@@ -100,7 +107,10 @@ fi
 step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
-VERSION="${config_version}"
+if [ -z "$VERSION" ]; then
+  VERSION="${config_version}"
+fi
+validate_version "$VERSION"
 VERSION_SUFFIX="_$VERSION"
 
 if [ -z "$ORIGIN" ]; then
@@ -269,7 +279,7 @@ if [[ "$RUN_PUBLISH" = "YES" ]]; then
   step "Success, now exec publish"
   export VERBOSE
   LOGFILE="$(dirname "$LOGFILE")"/publish.log
-  exec_potman publish -d "${FLAVOURS_DIR}" "${FLAVOUR}"
+  exec_potman publish -d "${FLAVOURS_DIR}" -V "$VERSION" "${FLAVOUR}"
 else
   step "Success"
 fi

@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION_REGEX='^[0-9](.[0-9a-zA-Z]+)*$'
+VERSION_REGEX='^[0-9](\.[0-9a-zA-Z_-]+)*$'
 ORIGIN_REGEX='^([a-zA-Z0-9_]*)$'
 KILN_NAME_REGEX='^[a-zA-Z]([0-9a-zA-Z]+)*$'
 FREEBSD_VERSION_REGEX='^(12\.3|13\.1)$'
@@ -108,6 +108,12 @@ function read_potman_config() {
   fi
 }
 
+function validate_version() {
+  if [[ ! "$1" =~ $VERSION_REGEX ]]; then
+      >&2 echo "invalid version passed"
+      exit 1
+  fi
+}
 
 # shellcheck disable=SC2154
 function read_flavour_config() {

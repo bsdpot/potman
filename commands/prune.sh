@@ -15,17 +15,18 @@ MINIPOT_PRUNE_POT_AGE="+1h"
 
 usage()
 {
-  echo "Usage: potman prune [-hv] [-d flavourdir] flavour
+  cat <<-"EOF"
+	Usage: potman prune [-hv] [-d flavourdir] flavour
 
-Options:
-    -d   Directory containing flavours
-    -h   Help
-    -v   Verbose
+	Options:
+	    -d   Directory containing flavours
+	    -h   Help
+	    -v   Verbose
 
-flavour is the flavour to prune. If it contains slashes,
-it will be taken as the direct path to a flavour (regardless
-of what is in the d parameter).
-"
+	flavour is the flavour to prune. If it contains slashes,
+	it will be taken as the direct path to a flavour (regardless
+	of what is in the d parameter).
+	EOF
 }
 
 OPTIND=1
@@ -82,9 +83,6 @@ fi
 
 step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
-
-VERSION="${config_version}"
-VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"
 init_pottery_ssh

@@ -11,21 +11,24 @@ DATE=$(date "+%Y-%m-%d")
 
 usage()
 {
-  echo "Usage: potman publish [-hv] [-d flavourdir] flavour
+  cat <<-"EOF"
+	Usage: potman publish [-hv] [-d flavourdir] [-V version] flavour
 
-Options:
-    -d   Directory containing flavours
-    -h   Help
-    -v   Verbose
+	Options:
+	    -d   Directory containing flavours
+	    -h   Help
+	    -v   Verbose
 
-flavour is the flavour to publish. If it contains slashes,
-it will be taken as the direct path to a flavour (regardless
-of what is in the d parameter).
-"
+	flavour is the flavour to publish. If it contains slashes,
+	it will be taken as the direct path to a flavour (regardless
+	of what is in the d parameter).
+	EOF
 }
 
+VERSION=
+
 OPTIND=1
-while getopts "hvd:" _o ; do
+while getopts "hvd:V:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -33,6 +36,9 @@ while getopts "hvd:" _o ; do
   h)
     usage
     exit 0
+    ;;
+  V)
+    VERSION="${OPTARG}"
     ;;
   v)
     VERBOSE="YES"
@@ -82,7 +88,10 @@ fi
 step "Read flavour config"
 read_flavour_config "${FLAVOURS_DIR}/${FLAVOUR}/${FLAVOUR}.ini"
 
-VERSION="${config_version}"
+if [ -z "$VERSION" ]; then
+  VERSION="${config_version}"
+fi
+validate_version "$VERSION"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"

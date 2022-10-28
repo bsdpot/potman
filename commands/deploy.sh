@@ -12,26 +12,29 @@ DATE=$(date "+%Y-%m-%d")
 
 usage()
 {
-  echo "Usage: potman deploy [-hqv] [-d flavourdir] [-s suffix] flavour
+  cat <<-"EOF"
+	Usage: potman deploy [-hqv] [-d flavourdir] [-s suffix]
+	                     [-V version] flavour
 
-Options:
-    -d   Directory containing flavours
-    -s   Suffix used in nomad job (allows to run multiple deployments
-         in parallel)
-    -h   Help
-    -q   Quick (do not execute special scripts)
-    -v   Verbose
+	Options:
+	    -d   Directory containing flavours
+	    -s   Suffix used in nomad job (allows to run multiple deployments
+	         in parallel)
+	    -h   Help
+	    -q   Quick (do not execute special scripts)
+	    -v   Verbose
 
-flavour is the flavour to deploy. If it contains slashes,
-it will be taken as the direct path to a flavour (regardless
-of what is in the d parameter).
-"
+	flavour is the flavour to deploy. If it contains slashes,
+	it will be taken as the direct path to a flavour (regardless
+	of what is in the d parameter).
+	EOF
 }
 
 QUICK="NO"
+VERSION=
 
 OPTIND=1
-while getopts "hqvd:s:" _o ; do
+while getopts "hqvd:s:V:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -45,6 +48,9 @@ while getopts "hqvd:s:" _o ; do
     ;;
   s)
     SUFFIX="${OPTARG}"
+    ;;
+  V)
+    VERSION="${OPTARG}"
     ;;
   v)
     VERBOSE="YES"
@@ -107,7 +113,10 @@ if [ "${config_runs_in_nomad}" != "true" ]; then
   false
 fi
 
-VERSION="${config_version}"
+if [ -z "$VERSION" ]; then
+  VERSION="${config_version}"
+fi
+validate_version "$VERSION"
 VERSION_SUFFIX="_$VERSION"
 
 step "Initialize"

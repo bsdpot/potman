@@ -199,6 +199,15 @@ cat >site.yml<<"EOF"
                     root      /usr/local/www/pottery;
                     autoindex on;
                 }
+                location = /index.html {
+                    rewrite   ^/index.html$ / last;
+                }
+                location = /index.json {
+                    rewrite   ^/index.json$ / break;
+                    root      /usr/local/www/pottery;
+                    autoindex on;
+                    autoindex_format json;
+                }
                 location = /50x.html {
                   root        /usr/local/www/nginx-dist;
                 }
