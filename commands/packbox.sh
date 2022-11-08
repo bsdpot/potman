@@ -47,6 +47,9 @@ mkdir -p _build
 read_potman_config potman.ini
 FREEBSD_VERSION="${config_freebsd_version}"
 
+# disables packer telemetry
+export CHECKPOINT_DISABLE=1
+
 step "Check tooling"
 ansible --version >/dev/null
 git --version >/dev/null
