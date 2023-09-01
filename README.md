@@ -29,6 +29,33 @@ To create your own kiln, init the VMs, build and deploy an example image:
 
 This might take a while when run for the first time.
 
+## Troubleshoot Vagrant
+
+In case your cannot start vagrant/virtualbox VMs due to this error:
+
+    Vagrant failed to properly resolve required dependencies. These
+    errors can commonly be caused by misconfigured plugin installations
+    or transient network issues. The reported error is:
+
+    conflicting dependencies net-ssh (= 6.1.0) and net-ssh (= 7.2.0)
+      Activated net-ssh-7.2.0
+      which does not match conflicting dependency (= 6.1.0)
+
+      Conflicting dependency chains:
+        net-ssh (= 7.2.0), 7.2.0 activated
+
+      versus:
+        net-ssh (= 6.1.0)
+
+      Gems matching net-ssh (= 6.1.0):
+        net-ssh-6.1.0
+
+You can use the following workaround:
+
+    export VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1
+    potman startvms
+
+
 ## Building Your Own Flavour
 
 Create your own flavour like described in
