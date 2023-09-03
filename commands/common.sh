@@ -5,7 +5,7 @@ set -e
 VERSION_REGEX='^[0-9](\.[0-9a-zA-Z_-]+)*$'
 ORIGIN_REGEX='^([a-zA-Z0-9_]*)$'
 KILN_NAME_REGEX='^[a-zA-Z]([0-9a-zA-Z]+)*$'
-FREEBSD_VERSION_REGEX='^(12\.3|13\.1)$'
+FREEBSD_VERSION_REGEX='^(12\.4|13\.2)$'
 # poor
 NETWORK_REGEX='^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$'
 # shellcheck disable=SC2034
