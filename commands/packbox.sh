@@ -70,7 +70,7 @@ rm -rf _build/packer
 git clone https://github.com/jlduran/packer-FreeBSD.git _build/packer
 
 cd _build/packer
-git checkout b7072009932ea0f46774d9170e16b30dcf881be5
+git checkout fe352a349f744d0ce2b5bbde5b84526df041e435
 
 {
   printf "\n# Enable resource limits\n"
@@ -81,7 +81,7 @@ git checkout b7072009932ea0f46774d9170e16b30dcf881be5
 } >>scripts/cleanup.sh
 
 <variables.pkrvars.hcl.sample \
-  sed "s/13\.1/${FREEBSD_VERSION}/g" >variables.pkrvars.hcl
+  sed "s/13\.2/${FREEBSD_VERSION}/g" >variables.pkrvars.hcl
 packer build -var-file=variables.pkrvars.hcl .
 vagrant box add "builds/FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64.box" \
   --name "FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64"
