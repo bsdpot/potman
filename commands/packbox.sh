@@ -80,9 +80,15 @@ git checkout fe352a349f744d0ce2b5bbde5b84526df041e435
   printf "touch /firstboot\n"
 } >>scripts/cleanup.sh
 
+# patch away dependency on qemu plugin
+sed -i '' '/qemu =/,+3 d' packer.pkr.hcl
+
+# installs missing plugins
+packer init .
+
 <variables.pkrvars.hcl.sample \
   sed "s/13\.2/${FREEBSD_VERSION}/g" >variables.pkrvars.hcl
-packer build -var-file=variables.pkrvars.hcl .
+packer build -only=virtualbox-iso.freebsd -var-file=variables.pkrvars.hcl .
 vagrant box add "builds/FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64.box" \
   --name "FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64"
 
