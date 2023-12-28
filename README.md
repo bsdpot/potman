@@ -103,7 +103,7 @@ VirtualBox, on FreeBSD the procedure is:
 Set the valid ranges for Virtualbox in `/usr/local/etc/vbox/networks.conf`:
 
     mkdir -p /usr/local/etc/vbox
-    echo "* 10.100.0.0/16" >>/usr/local/etc/vbox/networks.conf
+    echo "* 10.100.1.0/24" >>/usr/local/etc/vbox/networks.conf
 
 Note: Prior to virtualbox-ose port version 6.1.32_1, networks.conf
 is expected to reside in /etc/vbox/networks.conf. The vagrant port
