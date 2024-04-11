@@ -294,13 +294,11 @@ cat >site.yml<<"EOF"
     notify:
       - Restart consul
 
-  - name: Update nomad_args sysrc
-    ansible.builtin.command: sysrc nomad_args+=" -data-dir=/var/tmp/nomad"
-
-    notify:
-      - Restart nomad
-
   handlers:
+  - name: sysrc fix
+    ansible.builtin.command: sysrc nomad_args+=" -data-dir=/var/tmp/nomad"
+    listen: Restart nomad
+
   - name: Restart nomad
     ansible.builtin.service:
       name: nomad
