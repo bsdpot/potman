@@ -126,6 +126,12 @@ cat >site.yml<<"EOF"
       content: |
         FreeBSD: { url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest" }
 
+  - name: Update package metadata
+    ansible.builtin.command: pkg update -f
+
+  - name: Upgrade existing packages (incl. pkg)
+    ansible.builtin.command: pkg upgrade -y
+
   - name: Install packages
     ansible.builtin.package:
       name:
@@ -289,6 +295,10 @@ cat >site.yml<<"EOF"
       - Restart consul
 
   handlers:
+  - name: sysrc fix
+    ansible.builtin.command: sysrc nomad_args+=" -data-dir=/var/tmp/nomad"
+    listen: Restart nomad
+
   - name: Restart nomad
     ansible.builtin.service:
       name: nomad
