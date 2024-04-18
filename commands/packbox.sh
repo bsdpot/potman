@@ -82,6 +82,9 @@ git checkout fe352a349f744d0ce2b5bbde5b84526df041e435
 
 # patch away dependency on qemu plugin
 sed -i '' '/qemu =/,+3 d' packer.pkr.hcl
+sed -i '' '/source.qemu.freebsd/ d' packer.pkr.hcl
+
+# allow for longer boot time on slow vms
 sed -i '' 's/wait15s/wait45s/g' packer.pkr.hcl
 
 # installs missing plugins
