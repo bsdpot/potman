@@ -11,11 +11,11 @@ usage()
 
     flavourdir defaults to 'flavours'
     network defaults to '10.100.1'
-    freebd_version defaults to '13.2'
+    freebd_version defaults to '13.3'
 "
 }
 
-FREEBSD_VERSION=13.2
+FREEBSD_VERSION=13.3
 FLAVOURS_DIR=flavours
 
 OPTIND=1
