@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+args=()
+for arg in "$@"; do
+	if [ "$arg" = "--audio-driver" ]; then
+		args+=( --audio )
+	else
+		args+=( "$arg" )
+	fi
+done
+
+exec vboxmanage "${args[@]}"

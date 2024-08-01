@@ -4,8 +4,11 @@ if [ -z "$BASH_VERSION" ]; then
   >&2 echo "This needs to run in bash"
   exit 1
 fi
-SOURCE_DIR="${BASH_SOURCE[0]}"
-INCLUDE_DIR="${POTMAN_INCLUDE:=$(dirname "$SOURCE_DIR")}/../commands"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+POTMAN_BIN_DIR=$(dirname "$SCRIPT_PATH")
+POTMAN_BIN_DIR=$(realpath "$POTMAN_BIN_DIR")
+export POTMAN_BIN_DIR
+INCLUDE_DIR="${POTMAN_INCLUDE:=$POTMAN_BIN_DIR}/../commands"
 
 if [ ! -d "${INCLUDE_DIR}" ]; then
   >&2 echo "Can't find include dir ${INCLUDE_DIR}"

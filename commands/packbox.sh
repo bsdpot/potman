@@ -56,6 +56,7 @@ git --version >/dev/null
 packer --version >/dev/null
 vagrant --version >/dev/null
 vboxheadless --version >/dev/null
+VBOX_MAJOR_VERSION=$(vboxmanage --version | awk -F\. '{ print $1 }')
 
 step "Check box already exists"
 if vagrant box list | grep "FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64" |\
@@ -92,7 +93,18 @@ packer init .
 
 <variables.pkrvars.hcl.sample \
   sed "s/13\.2/${FREEBSD_VERSION}/g" >variables.pkrvars.hcl
-packer build -only=virtualbox-iso.freebsd -var-file=variables.pkrvars.hcl .
+
+if [ "$VBOX_MAJOR_VERSION" -lt 7 ]; then
+  PACKERPATH="$POTMAN_BIN_DIR:$PATH"
+else
+  PACKERPATH="$PATH"
+fi
+
+PATH="$PACKERPATH" \
+  packer build \
+    -only=virtualbox-iso.freebsd \
+    -var-file=variables.pkrvars.hcl .
+
 vagrant box add "builds/FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64.box" \
   --name "FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64"
 
