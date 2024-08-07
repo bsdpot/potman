@@ -22,6 +22,7 @@ usage()
 	         in parallel)
 	    -h   Help
 	    -q   Quick (do not execute special scripts)
+	    -V   Override image version
 	    -v   Verbose
 
 	flavour is the flavour to deploy. If it contains slashes,
