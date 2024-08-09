@@ -100,10 +100,10 @@ run_ssh_minipot "sudo find /var/cache/pot -name '${FLAVOUR}*.xz*' \
 
 step "Aggressively remove old pots"
 run_ssh_minipot "for potname in \
-  \$(sudo pot list -q | grep ${FLAVOUR}_${FBSD_TAG}); do \
+  \$(pot list -q | grep ${FLAVOUR}_${FBSD_TAG}); do \
       (zfs get -H origin | awk '{ print \$3 }' | grep -q \
        -- \"/\$potname/\") || \
-       sudo find /opt/pot/jails/\$potname/conf -name fscomp.conf \
+       find /opt/pot/jails/\$potname/conf -name fscomp.conf \
        -mtime $MINIPOT_PRUNE_POT_AGE \
        -exec sudo pot destroy -p \$potname \;
   done
