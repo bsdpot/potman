@@ -243,6 +243,12 @@ cat >site.yml<<"EOF"
       state: directory
       mode: '0700'
 
+  - name: Adding user 'vagrant' to group pot
+    user:
+      name: vagrant
+      groups: pot
+      append: yes
+
   - name: Download minipot-traefik.toml
     get_url:
       url: "https://raw.githubusercontent.com/pizzamig/minipot/\
