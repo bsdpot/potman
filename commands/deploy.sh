@@ -87,7 +87,7 @@ fi
 
 PUBLIC_SUFFIX=""
 if [[ -n "$SUFFIX" ]]; then
-  if [[ ! "$SUFFIX" =~ ^[a-zA-Z][a-zA-Z0-9]{1,8}$ ]]; then
+  if [[ ! "$SUFFIX" =~ ^[a-zA-Z][a-zA-Z0-9]{1,9}$ ]]; then
     >&2 echo "Invalid suffix"
     exit 1
   fi
