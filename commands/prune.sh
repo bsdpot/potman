@@ -103,7 +103,7 @@ run_ssh_minipot "for potname in \
   \$(sudo pot list -q | grep ${FLAVOUR}_${FBSD_TAG}); do \
       (zfs get -H origin | awk '{ print \$3 }' | grep -q \
        -- \"/\$potname/\") || \
-       find /opt/pot/jails/\$potname/conf -name fscomp.conf \
+       sudo find /opt/pot/jails/\$potname/conf -name fscomp.conf \
        -mtime $MINIPOT_PRUNE_POT_AGE \
        -exec sudo pot destroy -p \$potname \;
   done
