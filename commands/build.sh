@@ -12,7 +12,7 @@ function usage()
 {
   cat <<-"EOF"
 	Usage: potman build [-hpv] [-d flavourdir] [-o origin]"
-	                    [-l level] [-V version] flavour
+	                    [-l level] [-S seckey] [-V version] flavour
 
 	Options:
 	    -d   Directory containing flavours
@@ -20,6 +20,7 @@ function usage()
 	    -h   Help
 	    -o   Image to base the flavour on (overrides config)
 	    -p   Run 'potman publish' after build
+	    -S   Sign with security 'seckey' using signify(1)
 	    -V   Override image version
 	    -v   Verbose
 
@@ -31,10 +32,11 @@ function usage()
 
 RUN_PUBLISH="NO"
 COMPRESSION_LEVEL="0"
+SIGN_KEY=
 VERSION=
 
 OPTIND=1
-while getopts "hpvd:o:l:V:" _o ; do
+while getopts "hpvd:o:l:S:V:" _o ; do
   case "$_o" in
   d)
     FLAVOURS_DIR="${OPTARG}"
@@ -51,6 +53,9 @@ while getopts "hpvd:o:l:V:" _o ; do
     ;;
   p)
     RUN_PUBLISH="YES"
+    ;;
+  S)
+    SIGN_KEY="${OPTARG}"
     ;;
   V)
     VERSION="${OPTARG}"
@@ -142,7 +147,27 @@ init_potbuilder_ssh
 step "Test SSH connection"
 run_ssh true
 
-# XXX: this reomves everything starting with $FLAVOUR
+artifacts=( \
+  "${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz"
+  "${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta"
+  "${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein"
+)
+
+export_extra_args=()
+if [ -n "$SIGN_KEY" ]; then
+  step "Copy-in signing key"
+  if [ ! -f "$SIGN_KEY" ]; then
+    >&2 echo "Signature key $SIGN_KEY missing"
+    exit 1
+  fi
+  < "$SIGN_KEY" run_ssh \
+    "sudo sh -c 'umask 177; cat >/usr/local/etc/pot/sign.key'"
+  run_ssh sudo chmod 600 /usr/local/etc/pot/sign.key
+  export_extra_args+=(-S /usr/local/etc/pot/sign.key)
+  artifacts+=( "${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein.sig" )
+fi
+
+# XXX: this removes everything starting with $FLAVOUR
 step "Remove existing remote $FLAVOUR files"
 run_ssh "rm -rf /usr/local/etc/pot/flavours/\"$FLAVOUR\"*"
 
@@ -234,13 +259,11 @@ step "Export pot"
 run_ssh "sudo pot export -c \
   -l \"${COMPRESSION_LEVEL}\" \
   -p \"${FLAVOUR}_${FBSD_TAG}\" \
-  -t \"$VERSION\" -D /tmp"
+  -t \"$VERSION\" -D /tmp" "${export_extra_args[@]}"
 
 step "Copy pot image to local directory"
 scp -qF "$SSHCONF_POTBUILDER" \
-  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
-  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
-  "$POTBUILDER:/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein" \
+  "${artifacts[@]/#/$POTBUILDER:/tmp/}" \
   _build/tmp/.
 
 step "Clean up build vm"
@@ -249,17 +272,10 @@ if [ "${config_keep}" != "true" ]; then
   run_ssh "sudo pot destroy -F -p \"${FLAVOUR}_${FBSD_TAG}\""
 fi
 
-run_ssh sudo rm -f \
-  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
-  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
-  "/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein"
+run_ssh sudo rm -f "${artifacts[@]/#//tmp/}"
 
 step "Move image into place"
-mv \
-  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz" \
-  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.meta" \
-  "_build/tmp/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz.skein" \
-  _build/artifacts/.
+mv "${artifacts[@]/#/_build/tmp/}" _build/artifacts/.
 
 # if DEBUG is enabled, dump the variables
 if [ "$DEBUG" -eq 1 ]; then

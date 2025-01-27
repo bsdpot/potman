@@ -97,9 +97,11 @@ VERSION_SUFFIX="_$VERSION"
 step "Initialize"
 init_pottery_ssh
 
+artifact_basename="${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}"
+
 step "Check if remote tmp has enough disk space available"
 diskneed=$(stat -f "%z" \
-  "_build/artifacts/${FLAVOUR}_${FBSD_TAG}${VERSION_SUFFIX}.xz")
+  "_build/artifacts/$artifact_basename.xz")
 ((diskneed *= 2))
 diskfree=$(echo "df /usr/local/www/pottery" \
   | sftp -F "$SSHCONF_POTTERY" -q -b - "$POTTERY" \
@@ -114,12 +116,28 @@ if [[ "$diskneed" -gt "$diskfree" ]]; then
 fi
 
 step "Copy files to remote tmp"
+signature_cmds=
+if [ -f _build/artifacts/"$artifact_basename".xz.skein.sig ]; then
+  signature_cmds="\
+    mput \"$artifact_basename\".xz.skein.sig
+    rename \"$artifact_basename\".xz.skein.sig \
+      ../pottery/\"$artifact_basename\".xz.skein.sig
+  "
+fi
+
 sftp -F "$SSHCONF_POTTERY" -q -b - "$POTTERY" >/dev/null<<EOF
 lcd _build/artifacts
-cd /usr/local/www/pottery
-mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz
-mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.meta
-mput ${FLAVOUR}_"$FBSD_TAG$VERSION_SUFFIX".xz.skein
+cd /usr/local/www/pottery.tmp
+mput "$artifact_basename".xz
+mput "$artifact_basename".xz.meta
+mput "$artifact_basename".xz.skein
+$signature_cmds
+rename "$artifact_basename".xz.skein \
+  ../pottery/"$artifact_basename".xz.skein
+rename "$artifact_basename".xz.meta \
+  ../pottery/"$artifact_basename".xz.meta
+rename "$artifact_basename".xz \
+  ../pottery/"$artifact_basename".xz
 exit
 EOF
 
