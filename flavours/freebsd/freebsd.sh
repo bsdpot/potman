@@ -92,7 +92,7 @@ step "Install joe"
 pkg install -y joe
 
 step "Install common large packages"
-pkg install -y python38 perl5
+pkg install -y python311 perl5
 
 step "Clean package installation"
 pkg clean -y
