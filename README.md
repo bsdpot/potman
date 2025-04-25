@@ -3,7 +3,7 @@
 Build [pots](https://github.com/pizzamig/pot) easily.
 
 Uses [Potluck](https://potluck.honeyguide.net) templates, see also
-the [Potluck Flavour Repository](https://github.com/hny-gd/potluck) and
+the [Potluck Flavour Repository](https://codeberg.org/bsdpot/potluck) and
 [FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
 ## Quickstart
@@ -90,7 +90,7 @@ potman requires
 Installing these depends on your OS/distribution, on FreeBSD the procedure
 is:
 
-    pkg install bash git packer py39-ansible py39-packaging \
+    pkg install bash git packer py311-ansible py311-packaging \
       vagrant virtualbox-ose
     service vboxnet enable
     service vboxnet start
@@ -144,7 +144,7 @@ In the example below, we're building the git-nomad flavour.
 
 Get potluck:
 
-    git clone https://github.com/hny-gd/potluck
+    git clone https://codeberg.org/bsdpot/potluck
 
 Prepare potman:
 
