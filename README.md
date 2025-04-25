@@ -144,7 +144,7 @@ In the example below, we're building the git-nomad flavour.
 
 Get potluck:
 
-    git clone https://codeberg.org/bsdpot/potluck.git
+    git clone https://codeberg.org/bsdpot/potluck
 
 Prepare potman:
 
