@@ -3,7 +3,7 @@
 Build [pots](https://github.com/pizzamig/pot) easily.
 
 Uses [Potluck](https://potluck.honeyguide.net) templates, see also
-the [Potluck Flavour Repository](https://codeberg.org/bsdpot/potluck.git) and
+the [Potluck Flavour Repository](https://codeberg.org/bsdpot/potluck) and
 [FreeBSD Virtual DC with Potluck](https://honeyguide.eu/posts/virtual-dc1/).
 
 ## Quickstart
