@@ -1,3 +1,4 @@
+# THIS REPOSITORY IS NO LONGER MAINTAINED, THE NEW REPOSITORY LOCATION IS AT https://codeberg.org/bsdpot/potman/
 # potman
 
 Build [pots](https://github.com/pizzamig/pot) easily.
